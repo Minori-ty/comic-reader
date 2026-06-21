@@ -855,7 +855,7 @@ body,
 .settings-path-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
 }
 
 .settings-path-label {
@@ -1028,14 +1028,24 @@ body,
   justify-content: flex-end;
 }
 
-.settings-cleared-msg {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--text-secondary);
+/* ── Clear toast ── */
+.clear-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  padding: 8px 20px;
+  background: #323232;
+  color: #fff;
+  font-size: 13px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: toast-in 0.25s ease-out;
 }
 
-.settings-cleared-msg code {
-  font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
-  font-size: 11px;
-  color: #4caf50;
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
