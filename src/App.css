@@ -903,11 +903,18 @@ body,
   gap: 10px;
 }
 
-/* ── Confirm popover ── */
+/* ── Popover anchor wrapper ── */
+.settings-popover-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── Confirm popover (inline, absolute-positioned above the trigger) ── */
 .confirm-popover {
-  position: fixed;
-  transform: translate(-50%, -100%);
-  z-index: 2001;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
   width: 320px;
   padding: 14px 16px;
   background: var(--bg-card);
@@ -916,21 +923,21 @@ body,
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* Arrow — border triangle (pointing down, at bottom of popover) */
+/* Arrow — border triangle (pointing down at trigger) */
 .confirm-popover::before {
   content: "";
   position: absolute;
-  bottom: -8px;
+  bottom: -9px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-top: 7px solid var(--border-color);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid var(--border-color);
 }
 
-/* Arrow — fill triangle (slightly smaller, offset to show border) */
+/* Arrow — fill triangle (overlaps popover border to hide seam) */
 .confirm-popover::after {
   content: "";
   position: absolute;
@@ -939,9 +946,9 @@ body,
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid var(--bg-card);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid var(--bg-card);
 }
 
 .confirm-popover-text {

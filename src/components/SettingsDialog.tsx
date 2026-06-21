@@ -17,7 +17,6 @@ export function SettingsDialog({ onClose }: Props) {
   const [clearing, setClearing] = useState<"current" | "all" | null>(null);
   const [lastCleared, setLastCleared] = useState<string | null>(null);
   const [confirmPopover, setConfirmPopover] = useState(false);
-  const clearAllBtnRef = useRef<HTMLButtonElement>(null);
 
   // Load paths and cache sizes
   const loadData = useCallback(() => {
@@ -134,14 +133,24 @@ export function SettingsDialog({ onClose }: Props) {
                 >
                   {clearing === "current" ? "清除中…" : "清除当前库缓存"}
                 </button>
-                <button
-                  ref={clearAllBtnRef}
-                  className="dialog-btn dialog-btn-danger"
-                  onClick={() => setConfirmPopover(true)}
-                  disabled={clearing !== null}
-                >
-                  {clearing === "all" ? "清除中…" : "清除全部缓存"}
-                </button>
+                <span className="settings-popover-anchor">
+                  <button
+                    className="dialog-btn dialog-btn-danger"
+                    onClick={() => setConfirmPopover(true)}
+                    disabled={clearing !== null}
+                  >
+                    {clearing === "all" ? "清除中…" : "清除全部缓存"}
+                  </button>
+                  {confirmPopover && (
+                    <ConfirmPopover
+                      onCancel={() => setConfirmPopover(false)}
+                      onConfirm={() => {
+                        setConfirmPopover(false);
+                        handleClearAll();
+                      }}
+                    />
+                  )}
+                </span>
               </div>
 
               {lastCleared && (
@@ -149,20 +158,6 @@ export function SettingsDialog({ onClose }: Props) {
                   已清除: <code>{lastCleared}</code>
                 </p>
               )}
-
-              {/* Confirm clear-all popover — portal to body, position tracks the button even on scroll */}
-              {confirmPopover &&
-                createPortal(
-                  <ConfirmPopover
-                    anchorEl={clearAllBtnRef.current}
-                    onCancel={() => setConfirmPopover(false)}
-                    onConfirm={() => {
-                      setConfirmPopover(false);
-                      handleClearAll();
-                    }}
-                  />,
-                  document.body,
-                )}
             </>
           )}
 
@@ -224,59 +219,16 @@ function PathRow({ label, path, size }: { label: string; path: string; size?: st
   );
 }
 
-/** Popover anchored below the clear-all button for confirming dangerous actions.
- *  Renders to body via portal but tracks the anchor's position so it follows on scroll. */
+/** Popover anchored above the clear-all button. Rendered inline so it scrolls
+ *  naturally with the settings content and is clipped by overflow-y: auto. */
 function ConfirmPopover({
-  anchorEl,
   onCancel,
   onConfirm,
 }: {
-  anchorEl: HTMLElement | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-
-  // Recalculate position when anchor moves (scroll, resize)
-  useEffect(() => {
-    if (!anchorEl) return;
-    const recalc = () => {
-      const btnRect = anchorEl.getBoundingClientRect();
-      const dialogEl = anchorEl.closest(".settings-dialog") as HTMLElement | null;
-      const dialogRect = dialogEl?.getBoundingClientRect();
-
-      // Close if button is scrolled out of the dialog's visible area
-      if (dialogRect) {
-        const margin = 40;
-        if (
-          btnRect.bottom < dialogRect.top + margin ||
-          btnRect.top > dialogRect.bottom - margin
-        ) {
-          onCancel();
-          return;
-        }
-      }
-
-      setPos({
-        top: btnRect.top - 8,
-        left: btnRect.left + btnRect.width / 2,
-      });
-    };
-    recalc();
-
-    // Track scrolling on the nearest scrollable ancestor (.settings-content)
-    const scrollParent = anchorEl.closest(".settings-content");
-    if (scrollParent) {
-      scrollParent.addEventListener("scroll", recalc, { passive: true });
-    }
-    window.addEventListener("resize", recalc);
-
-    return () => {
-      scrollParent?.removeEventListener("scroll", recalc);
-      window.removeEventListener("resize", recalc);
-    };
-  }, [anchorEl, onCancel]);
 
   // Close on click outside / Escape
   useEffect(() => {
@@ -296,11 +248,7 @@ function ConfirmPopover({
   }, [onCancel]);
 
   return (
-    <div
-      ref={popoverRef}
-      className="confirm-popover"
-      style={{ top: pos.top, left: pos.left }}
-    >
+    <div ref={popoverRef} className="confirm-popover">
       <p className="confirm-popover-text">
         ⚠️ 此操作将清除<strong>所有库</strong>的全部缓存和数据库记录，不可撤销。确定继续？
       </p>
