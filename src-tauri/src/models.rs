@@ -60,3 +60,10 @@ pub struct AppPaths {
     pub thumbnails_dir: String,
     pub pages_cache_dir: String,
 }
+
+/// Result of a cache-clearing operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClearCacheResult {
+    pub cleared_path: String,
+}

@@ -48,5 +48,10 @@ export interface AppPaths {
   pagesCacheDir: string;
 }
 
+/** Matches Rust ClearCacheResult */
+export interface ClearCacheResult {
+  clearedPath: string;
+}
+
 /** App view state */
 export type AppView = "library" | "reader";

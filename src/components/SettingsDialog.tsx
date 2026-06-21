@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import type { AppPaths } from "../types";
+import type { AppPaths, ClearCacheResult } from "../types";
 
 type Tab = "storage" | "about";
 
@@ -11,12 +11,12 @@ interface Props {
 
 /**
  * Settings dialog with a sidebar layout.
- * - 存储管理: Shows full paths to all cache directories and database file.
- * - 关于: Shows app version and description.
  */
 export function SettingsDialog({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>("storage");
   const [paths, setPaths] = useState<AppPaths | null>(null);
+  const [clearing, setClearing] = useState<"current" | "all" | null>(null);
+  const [lastCleared, setLastCleared] = useState<string | null>(null);
 
   useEffect(() => {
     invoke<AppPaths>("get_app_paths")
@@ -32,6 +32,28 @@ export function SettingsDialog({ onClose }: Props) {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  const handleClearCurrent = async () => {
+    setClearing("current");
+    try {
+      const result = await invoke<ClearCacheResult>("clear_current_cache");
+      setLastCleared(result.clearedPath);
+    } catch (e) {
+      console.error("clear_current_cache:", e);
+    }
+    setClearing(null);
+  };
+
+  const handleClearAll = async () => {
+    setClearing("all");
+    try {
+      const result = await invoke<ClearCacheResult>("clear_all_cache");
+      setLastCleared(result.clearedPath);
+    } catch (e) {
+      console.error("clear_all_cache:", e);
+    }
+    setClearing(null);
+  };
 
   return createPortal(
     <div className="dialog-overlay" onClick={onClose}>
@@ -74,8 +96,9 @@ export function SettingsDialog({ onClose }: Props) {
             <>
               <h2 className="settings-content-title">存储管理</h2>
               <p className="settings-content-desc">
-                应用数据和缓存的完整路径。
+                当前漫画库的缓存路径。切换不同库目录时，缓存会自动隔离。
               </p>
+
               <div className="settings-path-list">
                 {paths ? (
                   <>
@@ -88,6 +111,30 @@ export function SettingsDialog({ onClose }: Props) {
                   <p className="settings-loading">加载中…</p>
                 )}
               </div>
+
+              {/* Clear cache buttons */}
+              <div className="settings-cache-actions">
+                <button
+                  className="dialog-btn dialog-btn-cancel"
+                  onClick={handleClearCurrent}
+                  disabled={clearing !== null}
+                >
+                  {clearing === "current" ? "清除中…" : "清除当前库缓存"}
+                </button>
+                <button
+                  className="dialog-btn dialog-btn-danger"
+                  onClick={handleClearAll}
+                  disabled={clearing !== null}
+                >
+                  {clearing === "all" ? "清除中…" : "清除全部缓存"}
+                </button>
+              </div>
+
+              {lastCleared && (
+                <p className="settings-cleared-msg">
+                  已清除: <code>{lastCleared}</code>
+                </p>
+              )}
             </>
           )}
 

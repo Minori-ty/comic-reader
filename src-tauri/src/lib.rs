@@ -39,8 +39,7 @@ fn get_app_data_dir() -> PathBuf {
 pub fn run() {
     let app_data_dir = get_app_data_dir();
     let db_path = app_data_dir.join("comics.db");
-    let cache_dir = app_data_dir.join("cache");
-    let thumbnail_dir = cache_dir.join("thumbnails");
+    let cache_root = app_data_dir.join("cache");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -49,15 +48,13 @@ pub fn run() {
         .setup(move |app| {
             std::fs::create_dir_all(&app_data_dir)
                 .expect("Failed to create app data directory");
-            std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
-            std::fs::create_dir_all(&thumbnail_dir)
-                .expect("Failed to create thumbnail directory");
+            std::fs::create_dir_all(&cache_root).expect("Failed to create cache directory");
 
             let conn = db::init_db(&db_path).expect("Failed to initialize database");
 
             app.manage(AppState {
                 db: Mutex::new(conn),
-                cache_dir,
+                cache_root,
             });
 
             Ok(())
@@ -73,6 +70,8 @@ pub fn run() {
             commands::open_file_location,
             commands::delete_comic,
             commands::get_app_paths,
+            commands::clear_current_cache,
+            commands::clear_all_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

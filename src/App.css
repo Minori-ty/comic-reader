@@ -785,3 +785,23 @@ body,
   color: var(--text-secondary);
   font-weight: 500;
 }
+
+.settings-cache-actions {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+}
+
+.settings-cleared-msg {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-cleared-msg code {
+  font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
+  font-size: 11px;
+  color: #4caf50;
+}

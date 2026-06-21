@@ -79,6 +79,21 @@ export function LibraryView() {
     };
   }, [upsertComic]);
 
+  // Listen for cache-cleared — refresh to empty list
+  useEffect(() => {
+    const unlisten = listen("cache-cleared", async () => {
+      try {
+        const fresh = await invoke<ComicInfo[]>("get_comics");
+        setComics(fresh);
+      } catch (e) {
+        console.error("Failed to refresh comics after cache clear:", e);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [setComics]);
+
   // Listen for scan-complete — do a full refresh to catch removals
   useEffect(() => {
     const unlisten = listen<ScanResult>("scan-complete", async (event) => {
