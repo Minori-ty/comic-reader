@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import type { PageInfo } from "../types";
 import { useAppStore } from "../store/useAppStore";
 
 /**
  * Scroll-based comic reader (webtoon/manhwa style).
- * Pages are stacked vertically using @tanstack/react-virtual for performance.
+ * Pages are extracted from ZIP to a cache directory on first access,
+ * then loaded via Tauri's asset protocol (convertFileSrc).
  */
 export function ReaderView() {
   const currentComicId = useAppStore((s) => s.currentComicId);
@@ -18,6 +19,9 @@ export function ReaderView() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Map of page_idx → asset:// URL
+  const [pageUrls, setPageUrls] = useState<Map<number, string>>(new Map());
+
   const parentRef = useRef<HTMLDivElement>(null);
 
   const comic = useMemo(
@@ -25,7 +29,7 @@ export function ReaderView() {
     [comics, currentComicId],
   );
 
-  // Load pages on mount
+  // Load pages and resolve file paths
   useEffect(() => {
     if (!currentComicId) return;
     loadPages();
@@ -39,14 +43,20 @@ export function ReaderView() {
 
       switch (e.key) {
         case "PageDown":
-        case "ArrowDown":
           e.preventDefault();
           el.scrollBy({ top: el.clientHeight * 0.9, behavior: "smooth" });
           break;
+        case "ArrowDown":
+          e.preventDefault();
+          el.scrollBy({ top: 200, behavior: "smooth" });
+          break;
         case "PageUp":
-        case "ArrowUp":
           e.preventDefault();
           el.scrollBy({ top: -el.clientHeight * 0.9, behavior: "smooth" });
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          el.scrollBy({ top: -200, behavior: "smooth" });
           break;
         case "Home":
           e.preventDefault();
@@ -76,6 +86,38 @@ export function ReaderView() {
         comicId: currentComicId,
       });
       setPages(pages);
+
+      // Pre-fetch all page file paths in parallel (with concurrency limit)
+      const urlMap = new Map<number, string>();
+      const CONCURRENCY = 8;
+
+      for (let i = 0; i < pages.length; i += CONCURRENCY) {
+        const batch = pages.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          batch.map(async (page) => {
+            try {
+              const filePath = await invoke<string>("get_page_file_path", {
+                comicId: currentComicId,
+                pageIdx: page.pageIdx,
+              });
+              return { pageIdx: page.pageIdx, url: convertFileSrc(filePath) };
+            } catch (e) {
+              console.error(
+                `Failed to get page file path for page ${page.pageIdx}:`,
+                e,
+              );
+              return null;
+            }
+          }),
+        );
+        for (const result of results) {
+          if (result) {
+            urlMap.set(result.pageIdx, result.url);
+          }
+        }
+      }
+
+      setPageUrls(urlMap);
     } catch (e) {
       console.error("Failed to load pages:", e);
       setError(String(e));
@@ -87,7 +129,7 @@ export function ReaderView() {
   // Track which page is currently visible
   useEffect(() => {
     const el = parentRef.current;
-    if (!el) return;
+    if (!el || pages.length === 0) return;
 
     const handleScroll = () => {
       if (!el) return;
@@ -105,7 +147,7 @@ export function ReaderView() {
   const virtualizer = useVirtualizer({
     count: pages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 800, // estimated page height, will adjust
+    estimateSize: () => 800,
     overscan: 2,
   });
 
@@ -153,7 +195,7 @@ export function ReaderView() {
         >
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const page = pages[virtualItem.index];
-            const imgSrc = `comic://localhost/${currentComicId}/${page.pageIdx}`;
+            const imgSrc = pageUrls.get(page.pageIdx);
 
             return (
               <div
@@ -168,21 +210,27 @@ export function ReaderView() {
                 }}
                 data-index={virtualItem.index}
               >
-                <img
-                  src={imgSrc}
-                  alt={`Page ${page.pageIdx + 1}`}
-                  loading={virtualItem.index < 3 ? "eager" : "lazy"}
-                  decoding="async"
-                  onLoad={() => {
-                    virtualizer.measure();
-                  }}
-                  onError={(e) => {
-                    console.error(
-                      `Failed to load page ${page.pageIdx}:`,
-                      e,
-                    );
-                  }}
-                />
+                {imgSrc ? (
+                  <img
+                    src={imgSrc}
+                    alt={`Page ${page.pageIdx + 1}`}
+                    loading={virtualItem.index < 3 ? "eager" : "lazy"}
+                    decoding="async"
+                    onLoad={() => {
+                      virtualizer.measure();
+                    }}
+                    onError={(e) => {
+                      console.error(
+                        `Failed to load page ${page.pageIdx}:`,
+                        e,
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="reader-loading" style={{ height: 400 }}>
+                    <p>Loading page {page.pageIdx + 1}…</p>
+                  </div>
+                )}
                 <div className="reader-page-number">
                   {page.pageIdx + 1}
                 </div>

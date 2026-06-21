@@ -7,6 +7,8 @@ export interface ComicInfo {
   fileSize: number;
   pageCount: number;
   coverPath: string | null;
+  /** Absolute filesystem path to the cover WebP thumbnail */
+  coverFilePath: string | null;
   addedAt: string;
   updatedAt: string;
 }

@@ -82,6 +82,7 @@ pub fn get_all_comics(conn: &Connection) -> SqliteResult<Vec<ComicInfo>> {
                 file_size: row.get(4)?,
                 page_count: row.get(5)?,
                 cover_path: row.get(6)?,
+                cover_file_path: None, // populated by caller
                 added_at: row.get(7)?,
                 updated_at: row.get(8)?,
             })
@@ -105,6 +106,7 @@ pub fn get_comic_by_id(conn: &Connection, comic_id: i64) -> SqliteResult<Option<
             file_size: row.get(4)?,
             page_count: row.get(5)?,
             cover_path: row.get(6)?,
+            cover_file_path: None, // populated by caller
             added_at: row.get(7)?,
             updated_at: row.get(8)?,
         })

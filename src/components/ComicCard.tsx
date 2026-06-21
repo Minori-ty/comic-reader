@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ComicInfo } from "../types";
 
 interface ComicCardProps {
@@ -8,13 +9,19 @@ interface ComicCardProps {
 
 /**
  * A single comic cover card in the library grid.
- * Uses the cover:// protocol to display the cached WebP thumbnail.
+ * Uses Tauri's built-in asset protocol via convertFileSrc() to load
+ * the WebP thumbnail from the local filesystem.
  */
 export const ComicCard = memo(function ComicCard({
   comic,
   onClick,
 }: ComicCardProps) {
-  const coverSrc = `cover://localhost/${comic.id}`;
+  const coverSrc = useMemo(() => {
+    if (comic.coverFilePath) {
+      return convertFileSrc(comic.coverFilePath);
+    }
+    return null;
+  }, [comic.coverFilePath]);
 
   return (
     <div
@@ -30,7 +37,7 @@ export const ComicCard = memo(function ComicCard({
       }}
     >
       <div className="comic-card-cover">
-        {comic.coverPath ? (
+        {coverSrc ? (
           <img
             src={coverSrc}
             alt={comic.fileName}

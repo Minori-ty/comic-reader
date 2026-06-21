@@ -11,6 +11,8 @@ pub struct ComicInfo {
     pub file_size: i64,
     pub page_count: i64,
     pub cover_path: Option<String>,
+    /// Absolute filesystem path to the cover thumbnail (for convertFileSrc).
+    pub cover_file_path: Option<String>,
     pub added_at: String,
     pub updated_at: String,
 }
