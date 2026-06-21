@@ -8,6 +8,7 @@ interface AppState {
   scanResult: ScanResult | null;
   scanProgress: ScanProgress | null;
   isScanning: boolean;
+  searchQuery: string;
 
   // Reader
   currentView: AppView;
@@ -21,6 +22,7 @@ interface AppState {
   setScanResult: (result: ScanResult | null) => void;
   setScanProgress: (progress: ScanProgress | null) => void;
   setIsScanning: (scanning: boolean) => void;
+  setSearchQuery: (query: string) => void;
   openReader: (comicId: number) => void;
   goToLibrary: () => void;
 }
@@ -31,6 +33,7 @@ export const useAppStore = create<AppState>((set) => ({
   scanResult: null,
   scanProgress: null,
   isScanning: false,
+  searchQuery: "",
   currentView: "library",
   currentComicId: null,
 
@@ -61,6 +64,7 @@ export const useAppStore = create<AppState>((set) => ({
   setScanResult: (result) => set({ scanResult: result }),
   setScanProgress: (progress) => set({ scanProgress: progress }),
   setIsScanning: (scanning) => set({ isScanning: scanning }),
+  setSearchQuery: (query) => set({ searchQuery: query }),
   openReader: (comicId) =>
     set({ currentView: "reader", currentComicId: comicId }),
   goToLibrary: () =>

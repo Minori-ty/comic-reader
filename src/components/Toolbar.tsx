@@ -22,6 +22,9 @@ export function Toolbar() {
   const currentView = useAppStore((s) => s.currentView);
   const goToLibrary = useAppStore((s) => s.goToLibrary);
 
+  const searchQuery = useAppStore((s) => s.searchQuery);
+  const setSearchQuery = useAppStore((s) => s.setSearchQuery);
+
   const scanInProgress = useRef(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -34,6 +37,13 @@ export function Toolbar() {
       unlisten.then((fn) => fn());
     };
   }, [setScanProgress]);
+
+  // Auto-hide scan result after 3 seconds
+  useEffect(() => {
+    if (!scanResult) return;
+    const timer = setTimeout(() => setScanResult(null), 3000);
+    return () => clearTimeout(timer);
+  }, [scanResult, setScanResult]);
 
   const handlePickDirectory = useCallback(async () => {
     try {
@@ -112,6 +122,42 @@ export function Toolbar() {
         )}
         <span className="toolbar-title">Comic Reader</span>
       </div>
+
+      {/* Search */}
+      {currentView === "library" && libraryPath && (
+        <div className="toolbar-search">
+          <svg
+            className="toolbar-search-icon"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            className="toolbar-search-input"
+            type="text"
+            placeholder="搜索漫画…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              className="toolbar-search-clear"
+              onClick={() => setSearchQuery("")}
+              title="清除搜索"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="toolbar-right">
         {libraryPath && (

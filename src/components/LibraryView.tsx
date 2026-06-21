@@ -6,6 +6,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { ComicInfo, ScanResult } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { ComicCard } from "./ComicCard";
+import type { HighlightRange } from "./ComicCard";
 
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 300;
@@ -41,9 +42,39 @@ export function LibraryView() {
   const setLibraryPath = useAppStore((s) => s.setLibraryPath);
   const openReader = useAppStore((s) => s.openReader);
   const libraryPath = useAppStore((s) => s.libraryPath);
+  const searchQuery = useAppStore((s) => s.searchQuery);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  // ── Substring search ──
+  const { filteredComics, matchMap } = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      return { filteredComics: comics, matchMap: null };
+    }
+    const lowerQ = q.toLowerCase();
+    const map = new Map<number, readonly HighlightRange[]>();
+    const items: ComicInfo[] = [];
+    for (const comic of comics) {
+      const lowerName = comic.fileName.toLowerCase();
+      const idx = lowerName.indexOf(lowerQ);
+      if (idx !== -1) {
+        items.push(comic);
+        // Find all occurrences of the query in the fileName (case-insensitive)
+        const ranges: [number, number][] = [];
+        let start = 0;
+        while (start < lowerName.length) {
+          const pos = lowerName.indexOf(lowerQ, start);
+          if (pos === -1) break;
+          ranges.push([pos, pos + q.length - 1]);
+          start = pos + 1;
+        }
+        map.set(comic.id, ranges);
+      }
+    }
+    return { filteredComics: items, matchMap: map };
+  }, [comics, searchQuery]);
 
   // ── Singleton context menu state ──
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -241,7 +272,7 @@ export function LibraryView() {
     return Math.max(1, Math.floor((w + CARD_GAP) / (CARD_WIDTH + CARD_GAP)));
   }, [containerWidth]);
 
-  const rowCount = Math.ceil(comics.length / columns);
+  const rowCount = Math.ceil(filteredComics.length / columns);
 
   const virtualizer = useVirtualizer({
     count: rowCount,
@@ -257,6 +288,14 @@ export function LibraryView() {
           <div className="library-empty-icon">📚</div>
           <h2>Welcome to Comic Reader</h2>
           <p>Select a directory containing your comic ZIP files to get started.</p>
+        </div>
+      ) : filteredComics.length === 0 && searchQuery.trim() ? (
+        <div className="library-empty">
+          <div className="library-empty-icon">🔍</div>
+          <h2>No Results</h2>
+          <p>
+            No comics match "{searchQuery}". Try a different search term.
+          </p>
         </div>
       ) : comics.length === 0 ? (
         <div className="library-empty">
@@ -294,7 +333,7 @@ export function LibraryView() {
             >
               {Array.from({ length: columns }).map((_, colIdx) => {
                 const comicIdx = virtualRow.index * columns + colIdx;
-                if (comicIdx >= comics.length) {
+                if (comicIdx >= filteredComics.length) {
                   return (
                     <div
                       key={`empty-${colIdx}`}
@@ -302,15 +341,17 @@ export function LibraryView() {
                     />
                   );
                 }
+                const comic = filteredComics[comicIdx];
                 return (
                   <div
-                    key={comics[comicIdx].id}
+                    key={comic.id}
                     style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
                   >
                     <ComicCard
-                      comic={comics[comicIdx]}
+                      comic={comic}
                       onClick={handleComicClick}
                       onContextMenu={handleContextMenu}
+                      highlightRanges={matchMap?.get(comic.id)}
                     />
                   </div>
                 );
