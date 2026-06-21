@@ -102,6 +102,46 @@ pub async fn get_comics(
     Ok(comics)
 }
 
+/// Open the system file explorer and select the given file.
+///
+/// - Windows: `explorer /select,"path"`
+/// - macOS: `open -R "path"`
+/// - Linux: opens the containing directory with `xdg-open`
+#[tauri::command]
+pub async fn open_file_location(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg("/select,")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("-R")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open Finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let parent = std::path::Path::new(&path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.clone());
+        std::process::Command::new("xdg-open")
+            .arg(&parent)
+            .spawn()
+            .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    }
+
+    Ok(())
+}
+
 /// Get pages for a specific comic.
 #[tauri::command]
 pub async fn get_comic_pages(
@@ -110,6 +150,59 @@ pub async fn get_comic_pages(
 ) -> Result<Vec<PageInfo>, String> {
     let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
     db::get_pages(&conn, comic_id).map_err(|e| format!("DB error: {}", e))
+}
+
+/// Delete a comic from the database and its cached files.
+/// When `delete_local_file` is true, also removes the ZIP/CBZ from disk.
+#[tauri::command]
+pub async fn delete_comic(
+    comic_id: i64,
+    delete_local_file: bool,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let (file_path, thumbnail_path, pages_cache_dir) = {
+        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+
+        let comic = db::get_comic_by_id(&conn, comic_id)
+            .map_err(|e| format!("DB error: {}", e))?
+            .ok_or_else(|| format!("Comic not found: {}", comic_id))?;
+
+        // Delete from database (CASCADE removes pages)
+        db::delete_comic(&conn, comic_id)
+            .map_err(|e| format!("DB delete error: {}", e))?;
+
+        let thumb = state
+            .cache_dir
+            .join("thumbnails")
+            .join(format!("{}.webp", comic_id));
+        let pages_dir = state
+            .cache_dir
+            .join("pages")
+            .join(comic_id.to_string());
+
+        (comic.file_path, thumb, pages_dir)
+    };
+
+    // Delete cached thumbnail
+    if thumbnail_path.exists() {
+        let _ = fs::remove_file(&thumbnail_path);
+    }
+
+    // Delete cached pages directory
+    if pages_cache_dir.exists() {
+        let _ = fs::remove_dir_all(&pages_cache_dir);
+    }
+
+    // Optionally delete the local ZIP file
+    if delete_local_file {
+        let zip = PathBuf::from(&file_path);
+        if zip.exists() {
+            fs::remove_file(&zip)
+                .map_err(|e| format!("Failed to delete file '{}': {}", file_path, e))?;
+        }
+    }
+
+    Ok(())
 }
 
 // ── File Path Commands (for convertFileSrc on frontend) ──

@@ -70,6 +70,8 @@ pub fn run() {
             commands::get_comic_pages,
             commands::get_cover_file_path,
             commands::get_page_file_path,
+            commands::open_file_location,
+            commands::delete_comic,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

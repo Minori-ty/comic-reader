@@ -11,7 +11,12 @@ function App() {
     <div className="app">
       <Toolbar />
       <main className="app-main">
-        {currentView === "library" ? <LibraryView /> : <ReaderView />}
+        <div style={{ display: currentView === "library" ? "block" : "none", height: "100%" }}>
+          <LibraryView />
+        </div>
+        <div style={{ display: currentView === "reader" ? "block" : "none", height: "100%" }}>
+          <ReaderView />
+        </div>
       </main>
     </div>
   );

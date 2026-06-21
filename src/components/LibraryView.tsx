@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -10,14 +11,28 @@ const CARD_WIDTH = 200;
 const CARD_HEIGHT = 300;
 const CARD_GAP = 16;
 
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  comicId: number;
+  filePath: string;
+  fileName: string;
+}
+
+interface DeleteDialogState {
+  visible: boolean;
+  comicId: number;
+  filePath: string;
+  fileName: string;
+}
+
 /**
  * Library view with a virtual-scrolled grid of comic covers.
- * Comics appear incrementally during scanning via `comic-indexed` events
- * so the user doesn't have to wait for the full scan to complete.
  *
- * The outermost div always carries `parentRef` so the ResizeObserver
- * is active from the first frame — this prevents the grid from showing
- * a stale 3-column layout before snapping to the correct width.
+ * Context menu and delete-confirmation dialog are managed as singletons
+ * and rendered via portal to `document.body` so `position: fixed` works
+ * regardless of the virtualiser's `transform` containers.
  */
 export function LibraryView() {
   const comics = useAppStore((s) => s.comics);
@@ -29,6 +44,25 @@ export function LibraryView() {
 
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  // ── Singleton context menu state ──
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    comicId: 0,
+    filePath: "",
+    fileName: "",
+  });
+
+  // ── Delete confirmation dialog state ──
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+    visible: false,
+    comicId: 0,
+    filePath: "",
+    fileName: "",
+  });
+  const [deleteLocalFile, setDeleteLocalFile] = useState(false);
 
   // Load initial data on mount
   useEffect(() => {
@@ -61,23 +95,58 @@ export function LibraryView() {
     };
   }, [setComics]);
 
-  // Track container width for grid column calculation.
-  // Reads the initial width eagerly so we never render with the fallback.
+  // Track container width for grid column calculation
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
-
-    // Set the real width immediately
     setContainerWidth(el.clientWidth);
-
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
+        // Ignore 0-width reports when the container is hidden (display:none)
+        if (entry.contentRect.width > 0) {
+          setContainerWidth(entry.contentRect.width);
+        }
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // ── Context menu: close on click outside / Escape ──
+  useEffect(() => {
+    if (!contextMenu.visible) return;
+
+    const close = () => setContextMenu((s) => ({ ...s, visible: false }));
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const menu = document.querySelector(".context-menu");
+      if (menu && menu.contains(e.target as Node)) return;
+      close();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [contextMenu.visible]);
+
+  // ── Delete dialog: close on Escape ──
+  useEffect(() => {
+    if (!deleteDialog.visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setDeleteDialog((s) => ({ ...s, visible: false }));
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [deleteDialog.visible]);
 
   const loadInitialData = async () => {
     try {
@@ -85,7 +154,6 @@ export function LibraryView() {
       if (path) {
         setLibraryPath(path);
       }
-
       const comics = await invoke<ComicInfo[]>("get_comics");
       setComics(comics);
       console.log(`Loaded ${comics.length} comics from database`);
@@ -101,14 +169,61 @@ export function LibraryView() {
     [openReader],
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, comic: ComicInfo) => {
+      setContextMenu({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        comicId: comic.id,
+        filePath: comic.filePath,
+        fileName: comic.fileName,
+      });
+    },
+    [],
+  );
+
+  const handleOpenFileLocation = useCallback(() => {
+    invoke("open_file_location", { path: contextMenu.filePath }).catch(
+      (e) => console.error("open_file_location:", e),
+    );
+    setContextMenu((s) => ({ ...s, visible: false }));
+  }, [contextMenu.filePath]);
+
+  const handleTriggerDelete = useCallback(() => {
+    setContextMenu((s) => ({ ...s, visible: false }));
+    setDeleteDialog({
+      visible: true,
+      comicId: contextMenu.comicId,
+      filePath: contextMenu.filePath,
+      fileName: contextMenu.fileName,
+    });
+    setDeleteLocalFile(false);
+  }, [contextMenu.comicId, contextMenu.filePath, contextMenu.fileName]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    try {
+      await invoke("delete_comic", {
+        comicId: deleteDialog.comicId,
+        deleteLocalFile,
+      });
+      // Remove from local state immediately
+      setComics(comics.filter((c) => c.id !== deleteDialog.comicId));
+    } catch (e) {
+      console.error("delete_comic:", e);
+    }
+    setDeleteDialog({ visible: false, comicId: 0, filePath: "", fileName: "" });
+  }, [deleteDialog.comicId, deleteLocalFile, comics, setComics]);
+
+  const handleCancelDelete = useCallback(() => {
+    setDeleteDialog((s) => ({ ...s, visible: false }));
+  }, []);
+
   // Calculate grid layout
   const columns = useMemo(() => {
-    const w = containerWidth || 800; // fallback until first measurement
+    const w = containerWidth || 800;
     if (w < CARD_WIDTH) return 1;
-    return Math.max(
-      1,
-      Math.floor((w + CARD_GAP) / (CARD_WIDTH + CARD_GAP)),
-    );
+    return Math.max(1, Math.floor((w + CARD_GAP) / (CARD_WIDTH + CARD_GAP)));
   }, [containerWidth]);
 
   const rowCount = Math.ceil(comics.length / columns);
@@ -180,6 +295,7 @@ export function LibraryView() {
                     <ComicCard
                       comic={comics[comicIdx]}
                       onClick={handleComicClick}
+                      onContextMenu={handleContextMenu}
                     />
                   </div>
                 );
@@ -188,6 +304,76 @@ export function LibraryView() {
           ))}
         </div>
       )}
+
+      {/* ── Context menu (portal → body) ── */}
+      {contextMenu.visible &&
+        createPortal(
+          <div
+            className="context-menu"
+            style={{
+              left: Math.min(contextMenu.x, window.innerWidth - 190),
+              top: Math.min(contextMenu.y, window.innerHeight - 120),
+            }}
+          >
+            <button
+              className="context-menu-item"
+              onClick={handleOpenFileLocation}
+            >
+              打开文件位置
+            </button>
+            <div className="context-menu-separator" />
+            <button
+              className="context-menu-item context-menu-item-danger"
+              onClick={handleTriggerDelete}
+            >
+              删除
+            </button>
+          </div>,
+          document.body,
+        )}
+
+      {/* ── Delete confirmation dialog (portal → body) ── */}
+      {deleteDialog.visible &&
+        createPortal(
+          <div className="dialog-overlay" onClick={handleCancelDelete}>
+            <div
+              className="dialog"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+            >
+              <h3 className="dialog-title">确认删除</h3>
+              <p className="dialog-message">
+                确定要删除「{deleteDialog.fileName}」吗？此操作不可撤销。
+              </p>
+
+              <label className="dialog-checkbox">
+                <input
+                  type="checkbox"
+                  checked={deleteLocalFile}
+                  onChange={(e) => setDeleteLocalFile(e.target.checked)}
+                />
+                <span>同时删除本地文件</span>
+              </label>
+
+              <div className="dialog-actions">
+                <button
+                  className="dialog-btn dialog-btn-cancel"
+                  onClick={handleCancelDelete}
+                >
+                  取消
+                </button>
+                <button
+                  className="dialog-btn dialog-btn-danger"
+                  onClick={handleConfirmDelete}
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

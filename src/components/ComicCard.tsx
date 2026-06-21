@@ -1,10 +1,12 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ComicInfo } from "../types";
 
 interface ComicCardProps {
   comic: ComicInfo;
   onClick: (comicId: number) => void;
+  /** Notify the parent to show a context menu at the given position. */
+  onContextMenu: (e: React.MouseEvent, comic: ComicInfo) => void;
 }
 
 /**
@@ -15,6 +17,7 @@ interface ComicCardProps {
 export const ComicCard = memo(function ComicCard({
   comic,
   onClick,
+  onContextMenu,
 }: ComicCardProps) {
   const coverSrc = useMemo(() => {
     if (comic.coverFilePath) {
@@ -23,10 +26,19 @@ export const ComicCard = memo(function ComicCard({
     return null;
   }, [comic.coverFilePath]);
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      onContextMenu(e, comic);
+    },
+    [comic, onContextMenu],
+  );
+
   return (
     <div
       className="comic-card"
       onClick={() => onClick(comic.id)}
+      onContextMenu={handleContextMenu}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {

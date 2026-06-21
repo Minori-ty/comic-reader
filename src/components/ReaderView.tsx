@@ -5,10 +5,8 @@ import { useAppStore } from "../store/useAppStore";
 
 /**
  * Scroll-based comic reader (webtoon/manhwa style).
- * Renders all pages in a plain scroll container — no virtual scrolling,
- * because each comic page has a different intrinsic height and the
- * virtualizer's estimate/measure approach causes overlapping when
- * heights vary dramatically.
+ * Each page image fills the visible viewport height and is horizontally centered.
+ * Page numbers sit below each image as separators.
  *
  * Images use `loading="lazy"` so off-screen pages don't consume
  * bandwidth until they're about to enter the viewport.
@@ -21,13 +19,11 @@ export function ReaderView() {
   const [pages, setPages] = useState<PageInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
 
   // Map of page_idx → asset:// URL
   const [pageUrls, setPageUrls] = useState<Map<number, string>>(new Map());
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const comic = useMemo(
     () => comics.find((c) => c.id === currentComicId),
@@ -131,47 +127,6 @@ export function ReaderView() {
     }
   };
 
-  // Track which page is currently visible using IntersectionObserver
-  useEffect(() => {
-    if (pages.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Find the entry with the largest intersection ratio
-        let best = entries[0];
-        for (const entry of entries) {
-          if (entry.intersectionRatio > best.intersectionRatio) {
-            best = entry;
-          }
-        }
-        if (best && best.intersectionRatio > 0) {
-          const idx = Number(best.target.getAttribute("data-page-idx"));
-          if (!Number.isNaN(idx)) {
-            setCurrentPage(idx + 1);
-          }
-        }
-      },
-      {
-        root: scrollRef.current,
-        threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5],
-      },
-    );
-
-    // Observe all page elements
-    pageRefs.current.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
-  }, [pages, pageUrls]); // re-attach when pages / urls change
-
-  // Callback ref for each page div
-  const setPageRef = (pageIdx: number) => (el: HTMLDivElement | null) => {
-    if (el) {
-      pageRefs.current.set(pageIdx, el);
-    } else {
-      pageRefs.current.delete(pageIdx);
-    }
-  };
-
   if (loading) {
     return (
       <div className="reader-loading">
@@ -201,7 +156,7 @@ export function ReaderView() {
           {comic?.fileName ?? "Reading"}
         </span>
         <span className="reader-page-info">
-          {currentPage} / {pages.length}
+          {pages.length} pages
         </span>
       </div>
 
@@ -210,12 +165,7 @@ export function ReaderView() {
           const imgSrc = pageUrls.get(page.pageIdx);
 
           return (
-            <div
-              key={page.pageIdx}
-              ref={setPageRef(page.pageIdx)}
-              className="reader-page"
-              data-page-idx={page.pageIdx}
-            >
+            <div key={page.pageIdx} className="reader-page">
               {imgSrc ? (
                 <img
                   src={imgSrc}
@@ -235,7 +185,7 @@ export function ReaderView() {
                 </div>
               )}
               <div className="reader-page-number">
-                #{page.pageIdx + 1} — {page.fileName}
+                # {page.pageIdx + 1}
               </div>
             </div>
           );
