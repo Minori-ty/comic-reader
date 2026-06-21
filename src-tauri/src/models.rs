@@ -50,3 +50,13 @@ pub struct ScanProgress {
     pub file_name: String,
     pub status: String, // "scanning", "indexing", "thumbnail", "done"
 }
+
+/// Application directory paths exposed to the frontend.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppPaths {
+    pub app_data_dir: String,
+    pub db_path: String,
+    pub thumbnails_dir: String,
+    pub pages_cache_dir: String,
+}

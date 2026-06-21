@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, State};
 
 use crate::db;
-use crate::models::{ComicInfo, PageInfo, ScanResult};
+use crate::models::{AppPaths, ComicInfo, PageInfo, ScanResult};
 use crate::scanner;
 
 /// Shared application state.
@@ -21,6 +21,36 @@ pub async fn get_library_path(
 ) -> Result<Option<String>, String> {
     let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
     db::get_config(&conn, "library_path").map_err(|e| format!("DB error: {}", e))
+}
+
+/// Return all application directory paths (for the Settings dialog).
+#[tauri::command]
+pub async fn get_app_paths(
+    state: State<'_, AppState>,
+) -> Result<AppPaths, String> {
+    let app_data_dir = state
+        .cache_dir
+        .parent()
+        .ok_or_else(|| "Cannot determine app data dir".to_string())?
+        .to_path_buf();
+
+    Ok(AppPaths {
+        app_data_dir: app_data_dir.to_string_lossy().to_string(),
+        db_path: app_data_dir
+            .join("comics.db")
+            .to_string_lossy()
+            .to_string(),
+        thumbnails_dir: state
+            .cache_dir
+            .join("thumbnails")
+            .to_string_lossy()
+            .to_string(),
+        pages_cache_dir: state
+            .cache_dir
+            .join("pages")
+            .to_string_lossy()
+            .to_string(),
+    })
 }
 
 /// Set the library path and trigger a full scan.

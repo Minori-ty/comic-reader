@@ -40,5 +40,13 @@ export interface ScanProgress {
   status: "skipped" | "indexed" | "error";
 }
 
+/** Matches Rust AppPaths */
+export interface AppPaths {
+  appDataDir: string;
+  dbPath: string;
+  thumbnailsDir: string;
+  pagesCacheDir: string;
+}
+
 /** App view state */
 export type AppView = "library" | "reader";
