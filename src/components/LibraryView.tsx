@@ -12,10 +12,13 @@ const CARD_GAP = 16;
 
 /**
  * Library view with a virtual-scrolled grid of comic covers.
+ * Comics appear incrementally during scanning via `comic-indexed` events
+ * so the user doesn't have to wait for the full scan to complete.
  */
 export function LibraryView() {
   const comics = useAppStore((s) => s.comics);
   const setComics = useAppStore((s) => s.setComics);
+  const upsertComic = useAppStore((s) => s.upsertComic);
   const setLibraryPath = useAppStore((s) => s.setLibraryPath);
   const openReader = useAppStore((s) => s.openReader);
   const libraryPath = useAppStore((s) => s.libraryPath);
@@ -28,17 +31,32 @@ export function LibraryView() {
     loadInitialData();
   }, []);
 
-  // Listen for scan-complete events
+  // Listen for incremental comic updates during scanning
   useEffect(() => {
-    const unlisten = listen<ScanResult>("scan-complete", async (event) => {
-      console.log("Scan complete:", event.payload);
-      const comics = await invoke<ComicInfo[]>("get_comics");
-      setComics(comics);
+    const unlisten = listen<ComicInfo>("comic-indexed", (event) => {
+      upsertComic(event.payload);
     });
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, []);
+  }, [upsertComic]);
+
+  // Listen for scan-complete — do a full refresh to catch removals
+  useEffect(() => {
+    const unlisten = listen<ScanResult>("scan-complete", async (event) => {
+      console.log("Scan complete:", event.payload);
+      // Full refresh to pick up removals and ensure sort consistency
+      try {
+        const fresh = await invoke<ComicInfo[]>("get_comics");
+        setComics(fresh);
+      } catch (e) {
+        console.error("Failed to refresh comics after scan:", e);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [setComics]);
 
   // Track container width for grid column calculation
   useEffect(() => {

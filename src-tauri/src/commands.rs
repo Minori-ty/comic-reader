@@ -2,7 +2,7 @@ use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 
 use crate::db;
 use crate::models::{ComicInfo, PageInfo, ScanResult};
@@ -16,20 +16,27 @@ pub struct AppState {
 
 /// Get the current library path from config.
 #[tauri::command]
-pub async fn get_library_path(state: State<'_, AppState>) -> Result<Option<String>, String> {
+pub async fn get_library_path(
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
     let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
     db::get_config(&conn, "library_path").map_err(|e| format!("DB error: {}", e))
 }
 
-/// Set the library path and trigger a scan.
+/// Set the library path and trigger a full scan.
 #[tauri::command]
 pub async fn set_library_path(
     path: String,
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<ScanResult, String> {
-    let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
-    db::set_config(&conn, "library_path", &path).map_err(|e| format!("DB error: {}", e))?;
+    // Persist the path (lock briefly)
+    {
+        let conn =
+            state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        db::set_config(&conn, "library_path", &path)
+            .map_err(|e| format!("DB error: {}", e))?;
+    }
 
     let base_dir = PathBuf::from(&path);
     if !base_dir.exists() {
@@ -39,26 +46,27 @@ pub async fn set_library_path(
         return Err(format!("Path is not a directory: {}", path));
     }
 
-    let result = scanner::scan_library(&base_dir, &conn, &state.cache_dir)?;
-
-    let _ = app.emit("scan-complete", &result);
-
-    Ok(result)
+    scanner::scan_library(&base_dir, &state.db, &state.cache_dir, &app)
 }
 
-/// Scan the library directory (re-scan).
+/// Re-scan the currently configured library directory.
 #[tauri::command]
 pub async fn scan_library(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<ScanResult, String> {
-    let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
-
-    let library_path: Option<String> = db::get_config(&conn, "library_path")
-        .map_err(|e| format!("DB error: {}", e))?;
+    let library_path: Option<String> = {
+        let conn =
+            state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        db::get_config(&conn, "library_path")
+            .map_err(|e| format!("DB error: {}", e))?
+    };
 
     let Some(path) = library_path else {
-        return Err("No library path set. Please select a directory first.".to_string());
+        return Err(
+            "No library path set. Please select a directory first."
+                .to_string(),
+        );
     };
 
     let base_dir = PathBuf::from(&path);
@@ -66,25 +74,28 @@ pub async fn scan_library(
         return Err(format!("Directory does not exist: {}", path));
     }
 
-    let result = scanner::scan_library(&base_dir, &conn, &state.cache_dir)?;
-
-    let _ = app.emit("scan-complete", &result);
-
-    Ok(result)
+    scanner::scan_library(&base_dir, &state.db, &state.cache_dir, &app)
 }
 
 /// Get all comics from the database.
 /// Populates `cover_file_path` with the absolute path to the WebP thumbnail.
 #[tauri::command]
-pub async fn get_comics(state: State<'_, AppState>) -> Result<Vec<ComicInfo>, String> {
+pub async fn get_comics(
+    state: State<'_, AppState>,
+) -> Result<Vec<ComicInfo>, String> {
     let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
-    let mut comics = db::get_all_comics(&conn).map_err(|e| format!("DB error: {}", e))?;
+    let mut comics =
+        db::get_all_comics(&conn).map_err(|e| format!("DB error: {}", e))?;
     let thumbnail_dir = state.cache_dir.join("thumbnails");
 
     for comic in &mut comics {
         if comic.cover_path.is_some() {
-            comic.cover_file_path =
-                Some(thumbnail_dir.join(format!("{}.webp", comic.id)).to_string_lossy().to_string());
+            comic.cover_file_path = Some(
+                thumbnail_dir
+                    .join(format!("{}.webp", comic.id))
+                    .to_string_lossy()
+                    .to_string(),
+            );
         }
     }
 
@@ -133,7 +144,10 @@ pub async fn get_page_file_path(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
-    let pages_cache_dir = state.cache_dir.join("pages").join(comic_id.to_string());
+    let pages_cache_dir = state
+        .cache_dir
+        .join("pages")
+        .join(comic_id.to_string());
 
     // Check if already extracted
     let cached_path = pages_cache_dir.join(format!("{}.jpg", page_idx));
@@ -146,19 +160,24 @@ pub async fn get_page_file_path(
         .map_err(|e| format!("DB error: {}", e))?
         .ok_or_else(|| format!("Comic not found: {}", comic_id))?;
 
-    let pages = db::get_pages(&conn, comic_id).map_err(|e| format!("DB error: {}", e))?;
+    let pages =
+        db::get_pages(&conn, comic_id).map_err(|e| format!("DB error: {}", e))?;
     let page = pages
         .get(page_idx as usize)
-        .ok_or_else(|| format!("Page {} not found in comic {}", page_idx, comic_id))?;
+        .ok_or_else(|| {
+            format!("Page {} not found in comic {}", page_idx, comic_id)
+        })?;
 
     // Extract the image from the ZIP
-    let zip_file =
-        fs::File::open(&comic.file_path).map_err(|e| format!("Cannot open zip: {}", e))?;
-    let mut archive =
-        zip::read::ZipArchive::new(zip_file).map_err(|e| format!("Bad zip: {}", e))?;
+    let zip_file = fs::File::open(&comic.file_path)
+        .map_err(|e| format!("Cannot open zip: {}", e))?;
+    let mut archive = zip::read::ZipArchive::new(zip_file)
+        .map_err(|e| format!("Bad zip: {}", e))?;
     let mut entry = archive
         .by_name(&page.file_name)
-        .map_err(|e| format!("Entry '{}' not found: {}", page.file_name, e))?;
+        .map_err(|e| {
+            format!("Entry '{}' not found: {}", page.file_name, e)
+        })?;
 
     let mut buf = Vec::with_capacity(entry.size() as usize);
     entry
@@ -174,8 +193,10 @@ pub async fn get_page_file_path(
     // Write to cache
     fs::create_dir_all(&pages_cache_dir)
         .map_err(|e| format!("Failed to create page cache dir: {}", e))?;
-    let cached_path = pages_cache_dir.join(format!("{}.{}", page_idx, ext));
-    fs::write(&cached_path, &buf).map_err(|e| format!("Failed to write cached page: {}", e))?;
+    let cached_path =
+        pages_cache_dir.join(format!("{}.{}", page_idx, ext));
+    fs::write(&cached_path, &buf)
+        .map_err(|e| format!("Failed to write cached page: {}", e))?;
 
     Ok(cached_path.to_string_lossy().to_string())
 }

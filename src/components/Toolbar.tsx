@@ -29,7 +29,7 @@ export function Toolbar() {
       });
       if (selected && typeof selected === "string") {
         setLibraryPath(selected);
-        await doScan(selected);
+        await doScan({ isNewPath: true, path: selected });
       }
     } catch (e) {
       console.error("Directory picker error:", e);
@@ -38,23 +38,33 @@ export function Toolbar() {
 
   const handleRescan = useCallback(async () => {
     if (libraryPath) {
-      await doScan(libraryPath);
+      await doScan({ isNewPath: false, path: libraryPath });
     }
   }, [libraryPath]);
 
-  const doScan = async (path: string) => {
+  const doScan = async ({
+    isNewPath,
+    path,
+  }: {
+    isNewPath: boolean;
+    path: string;
+  }) => {
     if (scanInProgress.current) return;
     scanInProgress.current = true;
     setIsScanning(true);
     setScanResult(null);
 
     try {
-      const result = await invoke<ScanResult>("set_library_path", {
-        path,
-      });
+      // Use set_library_path for initial selection (persists path + scans),
+      // use scan_library for re-scans (path already persisted).
+      const command = isNewPath ? "set_library_path" : "scan_library";
+      const args: Record<string, unknown> =
+        isNewPath ? { path } : {};
+      const result = await invoke<ScanResult>(command, args);
       setScanResult(result);
 
-      // Refresh the comic list
+      // Do a final refresh to ensure everything is in sync
+      // (the comic-indexed events handle incremental updates during the scan)
       const comics = await invoke<any[]>("get_comics");
       setComics(comics);
     } catch (e) {
@@ -112,7 +122,9 @@ export function Toolbar() {
         <div
           className={`scan-summary ${scanResult.errors.length > 0 ? "scan-summary-errors" : ""}`}
         >
-          {scanResult.newComics > 0 && <span>+{scanResult.newComics} new </span>}
+          {scanResult.newComics > 0 && (
+            <span>+{scanResult.newComics} new </span>
+          )}
           {scanResult.updatedComics > 0 && (
             <span>↻{scanResult.updatedComics} updated </span>
           )}
