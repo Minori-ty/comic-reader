@@ -239,6 +239,15 @@ pub fn delete_pages(conn: &Connection, comic_id: i64) -> SqliteResult<()> {
     Ok(())
 }
 
+/// Set cover_path to NULL for all comics whose file_path starts with the given prefix.
+pub fn clear_cover_paths_by_prefix(conn: &Connection, prefix: &str) -> SqliteResult<usize> {
+    let count = conn.execute(
+        "UPDATE comics SET cover_path = NULL WHERE file_path LIKE ?1",
+        params![format!("{}%", prefix)],
+    )?;
+    Ok(count)
+}
+
 // Helper: turn a rusqlite Optional extension into something we can use
 // (rusqlite doesn't have .optional() by default in all versions, so we polyfill)
 trait OptionalExt<T> {

@@ -14,7 +14,9 @@ export function SettingsDialog({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>("storage");
   const [paths, setPaths] = useState<AppPaths | null>(null);
   const [sizes, setSizes] = useState<CacheSizes | null>(null);
-  const [clearing, setClearing] = useState<"current" | "all" | null>(null);
+  const [clearing, setClearing] = useState<
+    "thumbnails" | "pages" | "current" | "all" | null
+  >(null);
   const [lastCleared, setLastCleared] = useState<string | null>(null);
   const [confirmPopover, setConfirmPopover] = useState(false);
 
@@ -49,6 +51,30 @@ export function SettingsDialog({ onClose }: Props) {
       loadData();
     } catch (e) {
       console.error("clear_current_cache:", e);
+    }
+    setClearing(null);
+  };
+
+  const handleClearThumbnails = async () => {
+    setClearing("thumbnails");
+    try {
+      const result = await invoke<ClearCacheResult>("clear_thumbnails_cache");
+      setLastCleared(result.clearedPath);
+      loadData();
+    } catch (e) {
+      console.error("clear_thumbnails_cache:", e);
+    }
+    setClearing(null);
+  };
+
+  const handleClearPages = async () => {
+    setClearing("pages");
+    try {
+      const result = await invoke<ClearCacheResult>("clear_pages_cache");
+      setLastCleared(result.clearedPath);
+      loadData();
+    } catch (e) {
+      console.error("clear_pages_cache:", e);
     }
     setClearing(null);
   };
@@ -107,11 +133,15 @@ export function SettingsDialog({ onClose }: Props) {
                       label="封面缩略图"
                       path={paths.thumbnailsDir}
                       size={sizes?.thumbnailsSize}
+                      onClear={handleClearThumbnails}
+                      clearing={clearing === "thumbnails"}
                     />
                     <PathRow
                       label="页面缓存"
                       path={paths.pagesCacheDir}
                       size={sizes?.pagesSize}
+                      onClear={handleClearPages}
+                      clearing={clearing === "pages"}
                     />
                     {sizes && (
                       <div className="settings-cache-total">
@@ -190,8 +220,20 @@ export function SettingsDialog({ onClose }: Props) {
   );
 }
 
-/** A single path row: label, monospace path (copy on click), optional size badge. */
-function PathRow({ label, path, size }: { label: string; path: string; size?: string }) {
+/** A single path row: label, monospace path (copy on click), optional size badge and clear button. */
+function PathRow({
+  label,
+  path,
+  size,
+  onClear,
+  clearing,
+}: {
+  label: string;
+  path: string;
+  size?: string;
+  onClear?: () => void;
+  clearing?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -207,6 +249,16 @@ function PathRow({ label, path, size }: { label: string; path: string; size?: st
         <span className="settings-path-label">{label}</span>
         {size !== undefined && (
           <span className="settings-path-size">{size}</span>
+        )}
+        {onClear && (
+          <button
+            className="settings-path-clear-btn"
+            onClick={onClear}
+            disabled={clearing}
+            title={`清除${label}`}
+          >
+            {clearing ? "…" : "×"}
+          </button>
         )}
       </div>
       <code className="settings-path-value" onClick={handleCopy} title="点击复制">

@@ -269,6 +269,71 @@ pub async fn delete_comic(
     Ok(())
 }
 
+/// Clear only the thumbnail cache for the current library.
+/// Resets cover_path in DB so thumbnails will be regenerated on next scan.
+#[tauri::command]
+pub async fn clear_thumbnails_cache(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ClearCacheResult, String> {
+    let library_path = {
+        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        db::get_config(&conn, "library_path")
+            .map_err(|e| format!("DB error: {}", e))?
+            .unwrap_or_default()
+    };
+
+    let scoped = library_cache_dir(&state.cache_root, &library_path);
+    let thumb_dir = scoped.join("thumbnails");
+
+    if thumb_dir.exists() {
+        fs::remove_dir_all(&thumb_dir)
+            .map_err(|e| format!("Failed to clear thumbnails: {}", e))?;
+    }
+
+    // Reset cover_path in DB so covers get regenerated
+    if !library_path.is_empty() {
+        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let _ = db::clear_cover_paths_by_prefix(&conn, &library_path)
+            .map_err(|e| format!("DB error: {}", e))?;
+    }
+
+    let result = ClearCacheResult {
+        cleared_path: thumb_dir.to_string_lossy().to_string(),
+    };
+    let _ = app.emit("cache-cleared", &result);
+    Ok(result)
+}
+
+/// Clear only the page image cache for the current library.
+/// DB metadata is kept; pages will be re-extracted on demand.
+#[tauri::command]
+pub async fn clear_pages_cache(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ClearCacheResult, String> {
+    let library_path = {
+        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        db::get_config(&conn, "library_path")
+            .map_err(|e| format!("DB error: {}", e))?
+            .unwrap_or_default()
+    };
+
+    let scoped = library_cache_dir(&state.cache_root, &library_path);
+    let pages_dir = scoped.join("pages");
+
+    if pages_dir.exists() {
+        fs::remove_dir_all(&pages_dir)
+            .map_err(|e| format!("Failed to clear pages cache: {}", e))?;
+    }
+
+    let result = ClearCacheResult {
+        cleared_path: pages_dir.to_string_lossy().to_string(),
+    };
+    let _ = app.emit("cache-cleared", &result);
+    Ok(result)
+}
+
 /// Clear cached data for the **current** library and remove its comics from DB.
 #[tauri::command]
 pub async fn clear_current_cache(

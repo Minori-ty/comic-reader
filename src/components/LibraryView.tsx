@@ -44,6 +44,7 @@ export function LibraryView() {
   const goToLibrary = useAppStore((s) => s.goToLibrary);
   const libraryPath = useAppStore((s) => s.libraryPath);
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const isScanning = useAppStore((s) => s.isScanning);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -290,6 +291,12 @@ export function LibraryView() {
           <div className="library-empty-icon">📚</div>
           <h2>Welcome to Comic Reader</h2>
           <p>Select a directory containing your comic ZIP files to get started.</p>
+        </div>
+      ) : isScanning && comics.length === 0 ? (
+        <div className="library-loading">
+          <div className="library-loading-spinner" />
+          <h2>正在扫描漫画…</h2>
+          <p>正在从目录中查找并索引漫画文件</p>
         </div>
       ) : filteredComics.length === 0 && searchQuery.trim() ? (
         <div className="library-empty">

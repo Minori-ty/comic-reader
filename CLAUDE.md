@@ -58,6 +58,10 @@ src-tauri/src/                # Rust backend
 - Page cache: `{app_data}/cache/{library_hash}/pages/`
 - Library hash: first 16 hex chars of blake3(library_path)
 - Cache isolation: each library directory gets its own cache subdirectory
+- **Fine-grained clear:** `clear_thumbnails_cache` (resets `cover_path` in DB), `clear_pages_cache` (keeps DB metadata), `clear_current_cache` (both + DB records), `clear_all_cache` (all libraries + full DB wipe)
+
+### Build-time Config
+- `build.rs` reads `identifier` from `tauri.conf.json` at compile time and exports it as `APP_IDENTIFIER` env var, consumed in `lib.rs` via `env!("APP_IDENTIFIER")` — no hardcoded duplicate
 
 ## Commands (Rust → TS)
 
@@ -73,6 +77,8 @@ src-tauri/src/                # Rust backend
 | `open_file_location` | `path: string` | — |
 | `delete_comic` | `comicId, deleteLocalFile` | — |
 | `get_app_paths` | — | `AppPaths` |
+| `clear_thumbnails_cache` | — | `ClearCacheResult` |
+| `clear_pages_cache` | — | `ClearCacheResult` |
 | `clear_current_cache` | — | `ClearCacheResult` |
 | `clear_all_cache` | — | `ClearCacheResult` |
 | `get_cache_sizes` | — | `CacheSizes` |
@@ -82,7 +88,7 @@ src-tauri/src/                # Rust backend
 ### Dialogs & Popovers
 - Settings dialog: sidebar layout, rendered via `createPortal` to `document.body`
 - Delete confirmation dialog: also portal to body
-- Confirm popover (clear all cache): portal to body, `position: fixed`, tracks anchor button via `getBoundingClientRect()` + scroll listener on `.settings-content`; auto-closes when button scrolls out of dialog bounds
+- Confirm popover (clear all cache): rendered **inline** inside a `position: relative` wrapper (`.settings-popover-anchor`) around the trigger button. Uses `position: absolute; bottom: calc(100% + 10px)` — no portal, no JS position calculation, no z-index. Scrolls naturally with the settings content and is clipped by `overflow-y: auto`. Only JS is click-outside + Escape to dismiss.
 - Context menu: portal to body, positioned at `clientX`/`clientY`
 
 ### Search
@@ -90,6 +96,10 @@ src-tauri/src/                # Rust backend
 - Highlights all occurrences in ComicCard using `<mark>` elements
 - `HighlightRange` type: `readonly number[]` (inclusive [start, end] indices)
 - Ranges are merged (overlap/adjacent) before rendering
+
+### Loading States
+- Initial scan from empty library: full-area spinner (`.library-loading`) shown when `isScanning && comics.length === 0`, disappears once the first `comic-indexed` event adds a comic to the list
+- `"No Comics Found"` only renders when scanning is complete and the list is still empty
 
 ### Virtual Scrolling
 - `@tanstack/react-virtual` for both library grid and reader
@@ -114,4 +124,4 @@ npx tsc --noEmit            # TypeScript type-check (zero errors expected)
 - All styles in `App.css`, no CSS modules or inline styles (except dynamic positioning)
 - CSS variables in `:root` for theming: `--bg`, `--bg-card`, `--text`, `--text-secondary`, `--accent`, `--border`, `--border-color`
 - Custom scrollbar styles for settings dialog and other scrollable areas
-- Z-index layers: toolbar logo 10, context menu 1000, dialog overlay 2000, confirm popover 2001
+- Z-index layers: toolbar logo 10, context menu 1000, dialog overlay 2000

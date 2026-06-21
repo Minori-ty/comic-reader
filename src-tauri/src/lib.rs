@@ -11,7 +11,7 @@ use tauri::Manager;
 
 /// Get the app data directory based on OS conventions.
 fn get_app_data_dir() -> PathBuf {
-    let identifier = "com.tauri-app.comic-dev";
+    let identifier = env!("APP_IDENTIFIER");
 
     #[cfg(target_os = "windows")]
     {
@@ -70,6 +70,8 @@ pub fn run() {
             commands::open_file_location,
             commands::delete_comic,
             commands::get_app_paths,
+            commands::clear_thumbnails_cache,
+            commands::clear_pages_cache,
             commands::clear_current_cache,
             commands::clear_all_cache,
             commands::get_cache_sizes,
