@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppPaths, CacheSizes, ClearCacheResult } from "../types";
@@ -16,6 +16,8 @@ export function SettingsDialog({ onClose }: Props) {
   const [sizes, setSizes] = useState<CacheSizes | null>(null);
   const [clearing, setClearing] = useState<"current" | "all" | null>(null);
   const [lastCleared, setLastCleared] = useState<string | null>(null);
+  const [confirmPopover, setConfirmPopover] = useState(false);
+  const clearAllBtnRef = useRef<HTMLButtonElement>(null);
 
   // Load paths and cache sizes
   const loadData = useCallback(() => {
@@ -133,8 +135,9 @@ export function SettingsDialog({ onClose }: Props) {
                   {clearing === "current" ? "清除中…" : "清除当前库缓存"}
                 </button>
                 <button
+                  ref={clearAllBtnRef}
                   className="dialog-btn dialog-btn-danger"
-                  onClick={handleClearAll}
+                  onClick={() => setConfirmPopover(true)}
                   disabled={clearing !== null}
                 >
                   {clearing === "all" ? "清除中…" : "清除全部缓存"}
@@ -146,6 +149,20 @@ export function SettingsDialog({ onClose }: Props) {
                   已清除: <code>{lastCleared}</code>
                 </p>
               )}
+
+              {/* Confirm clear-all popover — portal to body, position tracks the button even on scroll */}
+              {confirmPopover &&
+                createPortal(
+                  <ConfirmPopover
+                    anchorEl={clearAllBtnRef.current}
+                    onCancel={() => setConfirmPopover(false)}
+                    onConfirm={() => {
+                      setConfirmPopover(false);
+                      handleClearAll();
+                    }}
+                  />,
+                  document.body,
+                )}
             </>
           )}
 
@@ -203,6 +220,98 @@ function PathRow({ label, path, size }: { label: string; path: string; size?: st
       <span className={`settings-path-copied ${copied ? "visible" : ""}`}>
         已复制
       </span>
+    </div>
+  );
+}
+
+/** Popover anchored below the clear-all button for confirming dangerous actions.
+ *  Renders to body via portal but tracks the anchor's position so it follows on scroll. */
+function ConfirmPopover({
+  anchorEl,
+  onCancel,
+  onConfirm,
+}: {
+  anchorEl: HTMLElement | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  // Recalculate position when anchor moves (scroll, resize)
+  useEffect(() => {
+    if (!anchorEl) return;
+    const recalc = () => {
+      const btnRect = anchorEl.getBoundingClientRect();
+      const dialogEl = anchorEl.closest(".settings-dialog") as HTMLElement | null;
+      const dialogRect = dialogEl?.getBoundingClientRect();
+
+      // Close if button is scrolled out of the dialog's visible area
+      if (dialogRect) {
+        const margin = 40;
+        if (
+          btnRect.bottom < dialogRect.top + margin ||
+          btnRect.top > dialogRect.bottom - margin
+        ) {
+          onCancel();
+          return;
+        }
+      }
+
+      setPos({
+        top: btnRect.top - 8,
+        left: btnRect.left + btnRect.width / 2,
+      });
+    };
+    recalc();
+
+    // Track scrolling on the nearest scrollable ancestor (.settings-content)
+    const scrollParent = anchorEl.closest(".settings-content");
+    if (scrollParent) {
+      scrollParent.addEventListener("scroll", recalc, { passive: true });
+    }
+    window.addEventListener("resize", recalc);
+
+    return () => {
+      scrollParent?.removeEventListener("scroll", recalc);
+      window.removeEventListener("resize", recalc);
+    };
+  }, [anchorEl, onCancel]);
+
+  // Close on click outside / Escape
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (popoverRef.current?.contains(e.target as Node)) return;
+      onCancel();
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCancel]);
+
+  return (
+    <div
+      ref={popoverRef}
+      className="confirm-popover"
+      style={{ top: pos.top, left: pos.left }}
+    >
+      <p className="confirm-popover-text">
+        ⚠️ 此操作将清除<strong>所有库</strong>的全部缓存和数据库记录，不可撤销。确定继续？
+      </p>
+      <div className="confirm-popover-actions">
+        <button className="dialog-btn dialog-btn-cancel" onClick={onCancel}>
+          取消
+        </button>
+        <button className="dialog-btn dialog-btn-danger" onClick={onConfirm}>
+          确定清除全部
+        </button>
+      </div>
     </div>
   );
 }
