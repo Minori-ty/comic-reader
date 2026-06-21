@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import type { PageInfo } from "../types";
 import { useAppStore } from "../store/useAppStore";
 
 /**
  * Scroll-based comic reader (webtoon/manhwa style).
- * Pages are extracted from ZIP to a cache directory on first access,
- * then loaded via Tauri's asset protocol (convertFileSrc).
+ * Renders all pages in a plain scroll container — no virtual scrolling,
+ * because each comic page has a different intrinsic height and the
+ * virtualizer's estimate/measure approach causes overlapping when
+ * heights vary dramatically.
+ *
+ * Images use `loading="lazy"` so off-screen pages don't consume
+ * bandwidth until they're about to enter the viewport.
  */
 export function ReaderView() {
   const currentComicId = useAppStore((s) => s.currentComicId);
@@ -22,7 +26,8 @@ export function ReaderView() {
   // Map of page_idx → asset:// URL
   const [pageUrls, setPageUrls] = useState<Map<number, string>>(new Map());
 
-  const parentRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const comic = useMemo(
     () => comics.find((c) => c.id === currentComicId),
@@ -38,7 +43,7 @@ export function ReaderView() {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const el = parentRef.current;
+      const el = scrollRef.current;
       if (!el) return;
 
       switch (e.key) {
@@ -126,30 +131,46 @@ export function ReaderView() {
     }
   };
 
-  // Track which page is currently visible
+  // Track which page is currently visible using IntersectionObserver
   useEffect(() => {
-    const el = parentRef.current;
-    if (!el || pages.length === 0) return;
+    if (pages.length === 0) return;
 
-    const handleScroll = () => {
-      if (!el) return;
-      const scrollCenter = el.scrollTop + el.clientHeight / 2;
-      const pageHeight = el.scrollHeight / Math.max(pages.length, 1);
-      const pageIdx = Math.floor(scrollCenter / pageHeight) + 1;
-      setCurrentPage(Math.min(pageIdx, pages.length));
-    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the entry with the largest intersection ratio
+        let best = entries[0];
+        for (const entry of entries) {
+          if (entry.intersectionRatio > best.intersectionRatio) {
+            best = entry;
+          }
+        }
+        if (best && best.intersectionRatio > 0) {
+          const idx = Number(best.target.getAttribute("data-page-idx"));
+          if (!Number.isNaN(idx)) {
+            setCurrentPage(idx + 1);
+          }
+        }
+      },
+      {
+        root: scrollRef.current,
+        threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5],
+      },
+    );
 
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, [pages.length]);
+    // Observe all page elements
+    pageRefs.current.forEach((el) => observer.observe(el));
 
-  // Virtual scrolling for the reader
-  const virtualizer = useVirtualizer({
-    count: pages.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 800,
-    overscan: 2,
-  });
+    return () => observer.disconnect();
+  }, [pages, pageUrls]); // re-attach when pages / urls change
+
+  // Callback ref for each page div
+  const setPageRef = (pageIdx: number) => (el: HTMLDivElement | null) => {
+    if (el) {
+      pageRefs.current.set(pageIdx, el);
+    } else {
+      pageRefs.current.delete(pageIdx);
+    }
+  };
 
   if (loading) {
     return (
@@ -184,60 +205,41 @@ export function ReaderView() {
         </span>
       </div>
 
-      <div ref={parentRef} className="reader-scroll">
-        <div
-          className="reader-pages-container"
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const page = pages[virtualItem.index];
-            const imgSrc = pageUrls.get(page.pageIdx);
+      <div ref={scrollRef} className="reader-scroll">
+        {pages.map((page) => {
+          const imgSrc = pageUrls.get(page.pageIdx);
 
-            return (
-              <div
-                key={virtualItem.key}
-                className="reader-page"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-                data-index={virtualItem.index}
-              >
-                {imgSrc ? (
-                  <img
-                    src={imgSrc}
-                    alt={`Page ${page.pageIdx + 1}`}
-                    loading={virtualItem.index < 3 ? "eager" : "lazy"}
-                    decoding="async"
-                    onLoad={() => {
-                      virtualizer.measure();
-                    }}
-                    onError={(e) => {
-                      console.error(
-                        `Failed to load page ${page.pageIdx}:`,
-                        e,
-                      );
-                    }}
-                  />
-                ) : (
-                  <div className="reader-loading" style={{ height: 400 }}>
-                    <p>Loading page {page.pageIdx + 1}…</p>
-                  </div>
-                )}
-                <div className="reader-page-number">
-                  {page.pageIdx + 1}
+          return (
+            <div
+              key={page.pageIdx}
+              ref={setPageRef(page.pageIdx)}
+              className="reader-page"
+              data-page-idx={page.pageIdx}
+            >
+              {imgSrc ? (
+                <img
+                  src={imgSrc}
+                  alt={`Page ${page.pageIdx + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    console.error(
+                      `Failed to load page ${page.pageIdx}:`,
+                      e,
+                    );
+                  }}
+                />
+              ) : (
+                <div className="reader-page-placeholder">
+                  <p>Loading page {page.pageIdx + 1}…</p>
                 </div>
+              )}
+              <div className="reader-page-number">
+                #{page.pageIdx + 1} — {page.fileName}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

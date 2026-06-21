@@ -149,10 +149,12 @@ pub async fn get_page_file_path(
         .join("pages")
         .join(comic_id.to_string());
 
-    // Check if already extracted
-    let cached_path = pages_cache_dir.join(format!("{}.jpg", page_idx));
-    if cached_path.exists() {
-        return Ok(cached_path.to_string_lossy().to_string());
+    // Check if already extracted (try all common image extensions)
+    for ext in &["jpg", "jpeg", "png", "webp", "bmp", "gif"] {
+        let path = pages_cache_dir.join(format!("{}.{}", page_idx, ext));
+        if path.exists() {
+            return Ok(path.to_string_lossy().to_string());
+        }
     }
 
     // Look up the comic and page

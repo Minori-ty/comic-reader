@@ -1,17 +1,20 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import type { ScanResult } from "../types";
+import { listen } from "@tauri-apps/api/event";
+import type { ScanProgress, ScanResult } from "../types";
 import { useAppStore } from "../store/useAppStore";
 
 /**
- * Top toolbar with directory picker and scan controls.
+ * Top toolbar with directory picker, scan controls, and scan progress.
  */
 export function Toolbar() {
   const libraryPath = useAppStore((s) => s.libraryPath);
   const setLibraryPath = useAppStore((s) => s.setLibraryPath);
   const setComics = useAppStore((s) => s.setComics);
   const setScanResult = useAppStore((s) => s.setScanResult);
+  const setScanProgress = useAppStore((s) => s.setScanProgress);
+  const scanProgress = useAppStore((s) => s.scanProgress);
   const setIsScanning = useAppStore((s) => s.setIsScanning);
   const isScanning = useAppStore((s) => s.isScanning);
   const scanResult = useAppStore((s) => s.scanResult);
@@ -19,6 +22,16 @@ export function Toolbar() {
   const goToLibrary = useAppStore((s) => s.goToLibrary);
 
   const scanInProgress = useRef(false);
+
+  // Listen for per-file scan progress events
+  useEffect(() => {
+    const unlisten = listen<ScanProgress>("scan-progress", (event) => {
+      setScanProgress(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [setScanProgress]);
 
   const handlePickDirectory = useCallback(async () => {
     try {
@@ -53,18 +66,14 @@ export function Toolbar() {
     scanInProgress.current = true;
     setIsScanning(true);
     setScanResult(null);
+    setScanProgress(null);
 
     try {
-      // Use set_library_path for initial selection (persists path + scans),
-      // use scan_library for re-scans (path already persisted).
       const command = isNewPath ? "set_library_path" : "scan_library";
-      const args: Record<string, unknown> =
-        isNewPath ? { path } : {};
+      const args: Record<string, unknown> = isNewPath ? { path } : {};
       const result = await invoke<ScanResult>(command, args);
       setScanResult(result);
 
-      // Do a final refresh to ensure everything is in sync
-      // (the comic-indexed events handle incremental updates during the scan)
       const comics = await invoke<any[]>("get_comics");
       setComics(comics);
     } catch (e) {
@@ -82,6 +91,14 @@ export function Toolbar() {
       scanInProgress.current = false;
     }
   };
+
+  // Build progress text
+  const progressText = scanProgress
+    ? `${scanProgress.current}/${scanProgress.total}`
+    : null;
+  const progressPct = scanProgress
+    ? Math.round((scanProgress.current / scanProgress.total) * 100)
+    : 0;
 
   return (
     <div className="toolbar">
@@ -117,6 +134,17 @@ export function Toolbar() {
           </button>
         )}
       </div>
+
+      {/* Scan progress bar */}
+      {isScanning && scanProgress && (
+        <div className="scan-progress-bar-container">
+          <div
+            className="scan-progress-bar-fill"
+            style={{ width: `${progressPct}%` }}
+          />
+          <span className="scan-progress-text">{progressText}</span>
+        </div>
+      )}
 
       {scanResult && (
         <div

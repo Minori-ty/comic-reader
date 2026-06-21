@@ -14,6 +14,10 @@ const CARD_GAP = 16;
  * Library view with a virtual-scrolled grid of comic covers.
  * Comics appear incrementally during scanning via `comic-indexed` events
  * so the user doesn't have to wait for the full scan to complete.
+ *
+ * The outermost div always carries `parentRef` so the ResizeObserver
+ * is active from the first frame — this prevents the grid from showing
+ * a stale 3-column layout before snapping to the correct width.
  */
 export function LibraryView() {
   const comics = useAppStore((s) => s.comics);
@@ -24,7 +28,7 @@ export function LibraryView() {
   const libraryPath = useAppStore((s) => s.libraryPath);
 
   const parentRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(800);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   // Load initial data on mount
   useEffect(() => {
@@ -45,7 +49,6 @@ export function LibraryView() {
   useEffect(() => {
     const unlisten = listen<ScanResult>("scan-complete", async (event) => {
       console.log("Scan complete:", event.payload);
-      // Full refresh to pick up removals and ensure sort consistency
       try {
         const fresh = await invoke<ComicInfo[]>("get_comics");
         setComics(fresh);
@@ -58,10 +61,14 @@ export function LibraryView() {
     };
   }, [setComics]);
 
-  // Track container width for grid column calculation
+  // Track container width for grid column calculation.
+  // Reads the initial width eagerly so we never render with the fallback.
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
+
+    // Set the real width immediately
+    setContainerWidth(el.clientWidth);
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -74,13 +81,11 @@ export function LibraryView() {
 
   const loadInitialData = async () => {
     try {
-      // Load library path
       const path = await invoke<string | null>("get_library_path");
       if (path) {
         setLibraryPath(path);
       }
 
-      // Load comics
       const comics = await invoke<ComicInfo[]>("get_comics");
       setComics(comics);
       console.log(`Loaded ${comics.length} comics from database`);
@@ -98,10 +103,11 @@ export function LibraryView() {
 
   // Calculate grid layout
   const columns = useMemo(() => {
-    if (containerWidth < CARD_WIDTH) return 1;
+    const w = containerWidth || 800; // fallback until first measurement
+    if (w < CARD_WIDTH) return 1;
     return Math.max(
       1,
-      Math.floor((containerWidth + CARD_GAP) / (CARD_WIDTH + CARD_GAP)),
+      Math.floor((w + CARD_GAP) / (CARD_WIDTH + CARD_GAP)),
     );
   }, [containerWidth]);
 
@@ -114,82 +120,74 @@ export function LibraryView() {
     overscan: 3,
   });
 
-  // Show empty state if no library path set
-  if (!libraryPath) {
-    return (
-      <div className="library-empty">
-        <div className="library-empty-icon">📚</div>
-        <h2>Welcome to Comic Reader</h2>
-        <p>Select a directory containing your comic ZIP files to get started.</p>
-      </div>
-    );
-  }
-
-  // Show empty state if library path set but no comics
-  if (comics.length === 0) {
-    return (
-      <div className="library-empty">
-        <div className="library-empty-icon">🔍</div>
-        <h2>No Comics Found</h2>
-        <p>
-          No ZIP/CBZ files were found in the selected directory. Click "Scan" to
-          search for comics.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div ref={parentRef} className="library-view">
-      <div
-        className="library-grid-container"
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: "100%",
-          position: "relative",
-        }}
-      >
-        {virtualizer.getVirtualItems().map((virtualRow) => (
-          <div
-            key={virtualRow.key}
-            className="library-row"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: `${virtualRow.size}px`,
-              transform: `translateY(${virtualRow.start}px)`,
-              display: "flex",
-              gap: `${CARD_GAP}px`,
-              justifyContent: "center",
-            }}
-          >
-            {Array.from({ length: columns }).map((_, colIdx) => {
-              const comicIdx = virtualRow.index * columns + colIdx;
-              if (comicIdx >= comics.length) {
+      {!libraryPath ? (
+        <div className="library-empty">
+          <div className="library-empty-icon">📚</div>
+          <h2>Welcome to Comic Reader</h2>
+          <p>Select a directory containing your comic ZIP files to get started.</p>
+        </div>
+      ) : comics.length === 0 ? (
+        <div className="library-empty">
+          <div className="library-empty-icon">🔍</div>
+          <h2>No Comics Found</h2>
+          <p>
+            No ZIP/CBZ files were found in the selected directory. Click "Scan"
+            to search for comics.
+          </p>
+        </div>
+      ) : (
+        <div
+          className="library-grid-container"
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: "100%",
+            position: "relative",
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => (
+            <div
+              key={virtualRow.key}
+              className="library-row"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+                display: "flex",
+                gap: `${CARD_GAP}px`,
+                justifyContent: "center",
+              }}
+            >
+              {Array.from({ length: columns }).map((_, colIdx) => {
+                const comicIdx = virtualRow.index * columns + colIdx;
+                if (comicIdx >= comics.length) {
+                  return (
+                    <div
+                      key={`empty-${colIdx}`}
+                      style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
+                    />
+                  );
+                }
                 return (
                   <div
-                    key={`empty-${colIdx}`}
+                    key={comics[comicIdx].id}
                     style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
-                  />
+                  >
+                    <ComicCard
+                      comic={comics[comicIdx]}
+                      onClick={handleComicClick}
+                    />
+                  </div>
                 );
-              }
-              return (
-                <div
-                  key={comics[comicIdx].id}
-                  style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
-                >
-                  <ComicCard
-                    comic={comics[comicIdx]}
-                    onClick={handleComicClick}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+              })}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

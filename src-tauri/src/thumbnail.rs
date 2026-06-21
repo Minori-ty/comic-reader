@@ -10,7 +10,7 @@ use zip::read::ZipArchive;
 pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "bmp", "gif"];
 
 /// Maximum thumbnail width in pixels.
-const THUMBNAIL_WIDTH: u32 = 300;
+const THUMBNAIL_WIDTH: u32 = 200;
 
 /// Generate a WebP thumbnail from the first image found in a ZIP file.
 ///

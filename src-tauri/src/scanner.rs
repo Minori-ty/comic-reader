@@ -10,6 +10,7 @@ use walkdir::WalkDir;
 
 use crate::db;
 use crate::models::ComicInfo;
+use crate::models::ScanProgress;
 use crate::models::ScanResult;
 use crate::thumbnail::{self, IMAGE_EXTENSIONS};
 
@@ -72,6 +73,7 @@ pub fn scan_library(
     let mut updated_comics = 0usize;
     let mut skipped_comics = 0usize;
     let mut errors: Vec<String> = Vec::new();
+    let mut processed = 0usize;
 
     // ── Phase 3: Process each comic (lock DB only briefly per comic) ──
 
@@ -79,102 +81,118 @@ pub fn scan_library(
         let path_str = entry.path.to_string_lossy().to_string();
         scanned_paths.insert(path_str.clone());
 
-        // Step 3a: Check whether this file needs (re-)indexing (lock briefly)
+        // Step 3a: Check whether this file needs (re-)indexing (lock briefly).
+        // Re-process if: no record yet, hash changed, OR page_count==0 (interrupted scan).
         let needs_processing = {
             let conn = db.lock().map_err(|e| format!("DB lock: {}", e))?;
-            let existing = db::get_comic_hash(&conn, &path_str)
+            let existing = db::get_comic_hash_and_page_count(&conn, &path_str)
                 .map_err(|e| format!("DB error: {}", e))?;
-            existing.as_ref().map_or(true, |h| h != hash)
+            existing.as_ref().map_or(true, |(h, pc)| h != hash || *pc == 0)
         };
+
+        let status: &str;
 
         if !needs_processing {
             skipped_comics += 1;
-            continue;
-        }
+            status = "skipped";
+        } else {
+            let is_update = db_paths.contains(&path_str);
 
-        let is_update = db_paths.contains(&path_str);
-
-        // Step 3b: Insert/update comic record, get an ID (lock briefly)
-        let comic_id = {
-            let conn = db.lock().map_err(|e| format!("DB lock: {}", e))?;
-            if is_update {
-                let id = db::get_comic_id(&conn, &path_str)
-                    .map_err(|e| format!("DB error: {}", e))?
-                    .ok_or_else(|| format!("Comic vanished during scan: {}", path_str))?;
-                db::update_comic(&conn, id, hash, entry.file_size, 0, &now)
-                    .map_err(|e| format!("DB update: {}", e))?;
-                db::delete_pages(&conn, id)
-                    .map_err(|e| format!("DB delete pages: {}", e))?;
-                id
-            } else {
-                db::insert_comic(
-                    &conn,
-                    &path_str,
-                    &entry.file_name,
-                    hash,
-                    entry.file_size,
-                    0, // page_count placeholder — updated after extraction
-                    &now,
-                )
-                .map_err(|e| format!("DB insert: {}", e))?
-            }
-        }; // DB lock released — other commands can now run
-
-        // Step 3c: Extract pages + generate thumbnail (no DB lock — this is the slow part)
-        match process_comic_assets(&entry.path, &thumbnail_dir, comic_id) {
-            Ok((pages, cover_filename)) => {
-                let page_count = pages.len() as i64;
-
-                // Step 3d: Save pages and finalise metadata (lock briefly)
-                {
-                    let conn =
-                        db.lock().map_err(|e| format!("DB lock: {}", e))?;
-                    db::insert_pages(&conn, comic_id, &pages)
-                        .map_err(|e| format!("DB insert pages: {}", e))?;
-                    // Update page_count from placeholder to actual
-                    conn.execute(
-                        "UPDATE comics SET page_count = ?1 WHERE id = ?2",
-                        rusqlite::params![page_count, comic_id],
-                    )
-                    .map_err(|e| format!("DB update page_count: {}", e))?;
-                    if let Some(ref cover) = cover_filename {
-                        db::set_cover_path(&conn, comic_id, cover)
-                            .map_err(|e| format!("DB set cover: {}", e))?;
-                    }
-                } // DB lock released
-
-                // Build ComicInfo for the real-time event
-                let comic_info = ComicInfo {
-                    id: comic_id,
-                    file_path: path_str.clone(),
-                    file_name: entry.file_name.clone(),
-                    file_hash: hash.clone(),
-                    file_size: entry.file_size,
-                    page_count,
-                    cover_path: cover_filename.clone(),
-                    cover_file_path: cover_filename.as_ref().map(|_| {
-                        thumbnail_dir
-                            .join(format!("{}.webp", comic_id))
-                            .to_string_lossy()
-                            .to_string()
-                    }),
-                    added_at: now.clone(),
-                    updated_at: now.clone(),
-                };
-
-                // Emit event so the frontend adds this comic to the grid immediately
-                let _ = app.emit("comic-indexed", &comic_info);
-
+            // Step 3b: Insert/update comic record, get an ID (lock briefly)
+            let comic_id = {
+                let conn = db.lock().map_err(|e| format!("DB lock: {}", e))?;
                 if is_update {
-                    updated_comics += 1;
+                    let id = db::get_comic_id(&conn, &path_str)
+                        .map_err(|e| format!("DB error: {}", e))?
+                        .ok_or_else(|| format!("Comic vanished during scan: {}", path_str))?;
+                    db::update_comic(&conn, id, hash, entry.file_size, 0, &now)
+                        .map_err(|e| format!("DB update: {}", e))?;
+                    db::delete_pages(&conn, id)
+                        .map_err(|e| format!("DB delete pages: {}", e))?;
+                    id
                 } else {
-                    new_comics += 1;
+                    db::insert_comic(
+                        &conn,
+                        &path_str,
+                        &entry.file_name,
+                        hash,
+                        entry.file_size,
+                        0, // page_count placeholder — updated after extraction
+                        &now,
+                    )
+                    .map_err(|e| format!("DB insert: {}", e))?
+                }
+            }; // DB lock released — other commands can now run
+
+            // Step 3c: Extract pages + generate thumbnail (no DB lock — this is the slow part)
+            match process_comic_assets(&entry.path, &thumbnail_dir, comic_id) {
+                Ok((pages, cover_filename)) => {
+                    let page_count = pages.len() as i64;
+
+                    // Step 3d: Save pages and finalise metadata (lock briefly)
+                    {
+                        let conn =
+                            db.lock().map_err(|e| format!("DB lock: {}", e))?;
+                        db::insert_pages(&conn, comic_id, &pages)
+                            .map_err(|e| format!("DB insert pages: {}", e))?;
+                        conn.execute(
+                            "UPDATE comics SET page_count = ?1 WHERE id = ?2",
+                            rusqlite::params![page_count, comic_id],
+                        )
+                        .map_err(|e| format!("DB update page_count: {}", e))?;
+                        if let Some(ref cover) = cover_filename {
+                            db::set_cover_path(&conn, comic_id, cover)
+                                .map_err(|e| format!("DB set cover: {}", e))?;
+                        }
+                    } // DB lock released
+
+                    // Build ComicInfo for the real-time event
+                    let comic_info = ComicInfo {
+                        id: comic_id,
+                        file_path: path_str.clone(),
+                        file_name: entry.file_name.clone(),
+                        file_hash: hash.clone(),
+                        file_size: entry.file_size,
+                        page_count,
+                        cover_path: cover_filename.clone(),
+                        cover_file_path: cover_filename.as_ref().map(|_| {
+                            thumbnail_dir
+                                .join(format!("{}.webp", comic_id))
+                                .to_string_lossy()
+                                .to_string()
+                        }),
+                        added_at: now.clone(),
+                        updated_at: now.clone(),
+                    };
+
+                    // Emit event so the frontend adds this comic to the grid immediately
+                    let _ = app.emit("comic-indexed", &comic_info);
+
+                    if is_update {
+                        updated_comics += 1;
+                    } else {
+                        new_comics += 1;
+                    }
+                    status = "indexed";
+                }
+                Err(e) => {
+                    errors.push(format!("{}: {}", entry.file_name, e));
+                    status = "error";
                 }
             }
-            Err(e) => {
-                errors.push(format!("{}: {}", entry.file_name, e));
-            }
         }
+
+        // Emit scan progress after every file (skipped / indexed / error)
+        processed += 1;
+        let _ = app.emit(
+            "scan-progress",
+            &ScanProgress {
+                current: processed,
+                total: total_files,
+                file_name: entry.file_name.clone(),
+                status: status.to_string(),
+            },
+        );
     }
 
     // ── Phase 4: Remove stale entries (lock briefly) ──
@@ -314,9 +332,7 @@ fn process_comic_assets(
             image_entries.push((name, entry.size()));
         }
     }
-    image_entries.sort_by(|a, b| {
-        a.0.to_lowercase().cmp(&b.0.to_lowercase())
-    });
+    image_entries.sort_by(|a, b| natural_cmp(&a.0, &b.0));
 
     // Generate cover thumbnail from the first image
     let cover_filename = if let Some((first_name, _)) = image_entries.first()
@@ -345,4 +361,86 @@ fn process_comic_assets(
         .collect();
 
     Ok((pages, cover_filename))
+}
+
+/// Natural sort comparator — treats numeric segments as numbers so that
+/// "2.jpg" < "10.jpg" instead of the lexicographic "10.jpg" < "2.jpg".
+///
+/// Splits each string into alternating non-digit / digit segments and
+/// compares them pairwise: non-digit segments are compared case-insensitively,
+/// digit segments are compared as `u64`.
+fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    let mut ai = 0;
+    let mut bi = 0;
+
+    while ai < a.len() && bi < b.len() {
+        let a_is_digit = a[ai].is_ascii_digit();
+        let b_is_digit = b[bi].is_ascii_digit();
+
+        if a_is_digit && b_is_digit {
+            // Extract both numbers
+            let a_start = ai;
+            while ai < a.len() && a[ai].is_ascii_digit() {
+                ai += 1;
+            }
+            let b_start = bi;
+            while bi < b.len() && b[bi].is_ascii_digit() {
+                bi += 1;
+            }
+
+            let a_num: u64 = std::str::from_utf8(&a[a_start..ai])
+                .unwrap_or("0")
+                .parse()
+                .unwrap_or(0);
+            let b_num: u64 = std::str::from_utf8(&b[b_start..bi])
+                .unwrap_or("0")
+                .parse()
+                .unwrap_or(0);
+
+            match a_num.cmp(&b_num) {
+                std::cmp::Ordering::Equal => {}
+                other => return other,
+            }
+        } else if !a_is_digit && !b_is_digit {
+            // Compare non-digit segments case-insensitively
+            let a_start = ai;
+            while ai < a.len() && !a[ai].is_ascii_digit() {
+                ai += 1;
+            }
+            let b_start = bi;
+            while bi < b.len() && !b[bi].is_ascii_digit() {
+                bi += 1;
+            }
+
+            let a_seg = &a[a_start..ai];
+            let b_seg = &b[b_start..bi];
+
+            let len = a_seg.len().min(b_seg.len());
+            for i in 0..len {
+                match a_seg[i]
+                    .to_ascii_lowercase()
+                    .cmp(&b_seg[i].to_ascii_lowercase())
+                {
+                    std::cmp::Ordering::Equal => {}
+                    other => return other,
+                }
+            }
+            match a_seg.len().cmp(&b_seg.len()) {
+                std::cmp::Ordering::Equal => {}
+                other => return other,
+            }
+        } else {
+            // Mixed digit / non-digit: digits sort before non-digits
+            return if a_is_digit {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Greater
+            };
+        }
+    }
+
+    // Shorter string comes first if all common segments match
+    a.len().cmp(&b.len())
 }

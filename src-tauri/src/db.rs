@@ -114,10 +114,15 @@ pub fn get_comic_by_id(conn: &Connection, comic_id: i64) -> SqliteResult<Option<
     .optional()
 }
 
-/// Get the stored hash for a comic by file_path (used for incremental scan).
-pub fn get_comic_hash(conn: &Connection, file_path: &str) -> SqliteResult<Option<String>> {
-    let mut stmt = conn.prepare("SELECT file_hash FROM comics WHERE file_path = ?1")?;
-    stmt.query_row(params![file_path], |row| row.get(0))
+/// Get both the stored hash and page_count — used to detect interrupted scans
+/// (page_count == 0 means extraction never completed, so re-process even if hash matches).
+pub fn get_comic_hash_and_page_count(
+    conn: &Connection,
+    file_path: &str,
+) -> SqliteResult<Option<(String, i64)>> {
+    let mut stmt =
+        conn.prepare("SELECT file_hash, page_count FROM comics WHERE file_path = ?1")?;
+    stmt.query_row(params![file_path], |row| Ok((row.get(0)?, row.get(1)?)))
         .optional()
 }
 

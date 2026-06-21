@@ -32,12 +32,12 @@ export interface ScanResult {
   errors: string[];
 }
 
-/** Matches Rust ScanProgress */
+/** Matches Rust ScanProgress — emitted per-file during scanning. */
 export interface ScanProgress {
   current: number;
   total: number;
   fileName: string;
-  status: "scanning" | "indexing" | "thumbnail" | "done";
+  status: "skipped" | "indexed" | "error";
 }
 
 /** App view state */
