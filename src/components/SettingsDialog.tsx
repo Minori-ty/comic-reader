@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import type { AppPaths, ClearCacheResult } from "../types";
+import type { AppPaths, CacheSizes, ClearCacheResult } from "../types";
 
 type Tab = "storage" | "about";
 
@@ -9,20 +9,27 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * Settings dialog with a sidebar layout.
- */
+/** Settings dialog with a sidebar layout. */
 export function SettingsDialog({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>("storage");
   const [paths, setPaths] = useState<AppPaths | null>(null);
+  const [sizes, setSizes] = useState<CacheSizes | null>(null);
   const [clearing, setClearing] = useState<"current" | "all" | null>(null);
   const [lastCleared, setLastCleared] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Load paths and cache sizes
+  const loadData = useCallback(() => {
     invoke<AppPaths>("get_app_paths")
       .then(setPaths)
       .catch((e) => console.error("get_app_paths:", e));
+    invoke<CacheSizes>("get_cache_sizes")
+      .then(setSizes)
+      .catch((e) => console.error("get_cache_sizes:", e));
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Close on Escape
   useEffect(() => {
@@ -38,6 +45,7 @@ export function SettingsDialog({ onClose }: Props) {
     try {
       const result = await invoke<ClearCacheResult>("clear_current_cache");
       setLastCleared(result.clearedPath);
+      loadData();
     } catch (e) {
       console.error("clear_current_cache:", e);
     }
@@ -49,6 +57,7 @@ export function SettingsDialog({ onClose }: Props) {
     try {
       const result = await invoke<ClearCacheResult>("clear_all_cache");
       setLastCleared(result.clearedPath);
+      loadData();
     } catch (e) {
       console.error("clear_all_cache:", e);
     }
@@ -57,19 +66,11 @@ export function SettingsDialog({ onClose }: Props) {
 
   return createPortal(
     <div className="dialog-overlay" onClick={onClose}>
-      <div
-        className="settings-dialog"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
+      <div className="settings-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         {/* Sidebar */}
         <nav className="settings-sidebar">
           <div className="settings-sidebar-title">设置</div>
-          <button
-            className={`settings-sidebar-item ${tab === "storage" ? "active" : ""}`}
-            onClick={() => setTab("storage")}
-          >
+          <button className={`settings-sidebar-item ${tab === "storage" ? "active" : ""}`} onClick={() => setTab("storage")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <ellipse cx="12" cy="5" rx="9" ry="3" />
               <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
@@ -77,10 +78,7 @@ export function SettingsDialog({ onClose }: Props) {
             </svg>
             存储管理
           </button>
-          <button
-            className={`settings-sidebar-item ${tab === "about" ? "active" : ""}`}
-            onClick={() => setTab("about")}
-          >
+          <button className={`settings-sidebar-item ${tab === "about" ? "active" : ""}`} onClick={() => setTab("about")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="16" x2="12" y2="12" />
@@ -96,7 +94,7 @@ export function SettingsDialog({ onClose }: Props) {
             <>
               <h2 className="settings-content-title">存储管理</h2>
               <p className="settings-content-desc">
-                当前漫画库的缓存路径。切换不同库目录时，缓存会自动隔离。
+                当前漫画库的缓存路径及占用空间。切换不同库目录时，缓存会自动隔离。
               </p>
 
               <div className="settings-path-list">
@@ -104,8 +102,21 @@ export function SettingsDialog({ onClose }: Props) {
                   <>
                     <PathRow label="应用数据目录" path={paths.appDataDir} />
                     <PathRow label="数据库" path={paths.dbPath} />
-                    <PathRow label="封面缩略图" path={paths.thumbnailsDir} />
-                    <PathRow label="页面缓存" path={paths.pagesCacheDir} />
+                    <PathRow
+                      label="封面缩略图"
+                      path={paths.thumbnailsDir}
+                      size={sizes?.thumbnailsSize}
+                    />
+                    <PathRow
+                      label="页面缓存"
+                      path={paths.pagesCacheDir}
+                      size={sizes?.pagesSize}
+                    />
+                    {sizes && (
+                      <div className="settings-cache-total">
+                        缓存总计：{sizes.totalSize}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="settings-loading">加载中…</p>
@@ -167,8 +178,8 @@ export function SettingsDialog({ onClose }: Props) {
   );
 }
 
-/** A single path row: label above, monospace path below with copy-on-click. */
-function PathRow({ label, path }: { label: string; path: string }) {
+/** A single path row: label, monospace path (copy on click), optional size badge. */
+function PathRow({ label, path, size }: { label: string; path: string; size?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -180,7 +191,12 @@ function PathRow({ label, path }: { label: string; path: string }) {
 
   return (
     <div className="settings-path-row">
-      <span className="settings-path-label">{label}</span>
+      <div className="settings-path-header">
+        <span className="settings-path-label">{label}</span>
+        {size !== undefined && (
+          <span className="settings-path-size">{size}</span>
+        )}
+      </div>
       <code className="settings-path-value" onClick={handleCopy} title="点击复制">
         {path}
       </code>

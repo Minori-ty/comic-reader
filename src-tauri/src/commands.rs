@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::db;
-use crate::models::{AppPaths, ClearCacheResult, ComicInfo, PageInfo, ScanResult};
+use crate::models::{AppPaths, CacheSizes, ClearCacheResult, ComicInfo, PageInfo, ScanResult};
 use crate::scanner;
 
 /// Shared application state.
@@ -57,6 +57,36 @@ pub async fn get_app_paths(
         db_path: app_data_dir.join("comics.db").to_string_lossy().to_string(),
         thumbnails_dir: scoped.join("thumbnails").to_string_lossy().to_string(),
         pages_cache_dir: scoped.join("pages").to_string_lossy().to_string(),
+    })
+}
+
+/// Return the disk usage of the current library's cache directories.
+#[tauri::command]
+pub async fn get_cache_sizes(
+    state: State<'_, AppState>,
+) -> Result<CacheSizes, String> {
+    let library_path = {
+        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        db::get_config(&conn, "library_path")
+            .map_err(|e| format!("DB error: {}", e))?
+            .unwrap_or_default()
+    };
+
+    let scoped = library_cache_dir(&state.cache_root, &library_path);
+    let thumb_dir = scoped.join("thumbnails");
+    let pages_dir = scoped.join("pages");
+
+    let (thumb_bytes, thumb_display) = dir_size(&thumb_dir);
+    let (pages_bytes, pages_display) = dir_size(&pages_dir);
+    let total_bytes = thumb_bytes + pages_bytes;
+
+    Ok(CacheSizes {
+        thumbnails_size: thumb_display,
+        thumbnails_bytes: thumb_bytes,
+        pages_size: pages_display,
+        pages_bytes,
+        total_size: format_bytes(total_bytes),
+        total_bytes,
     })
 }
 
@@ -391,4 +421,39 @@ pub async fn get_page_file_path(
         .map_err(|e| format!("Failed to write cached page: {}", e))?;
 
     Ok(cached_path.to_string_lossy().to_string())
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────
+
+/// Recursively compute the total size of a directory in bytes.
+/// Returns `(bytes, human_readable_string)`.
+fn dir_size(path: &Path) -> (u64, String) {
+    if !path.exists() {
+        return (0, "0 B".to_string());
+    }
+
+    let total: u64 = walkdir::WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|e| e.metadata().map(|m| m.len()).unwrap_or(0))
+        .sum();
+
+    (total, format_bytes(total))
+}
+
+/// Format a byte count into a human-readable string.
+fn format_bytes(bytes: u64) -> String {
+    const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
+    let mut size = bytes as f64;
+    let mut unit_idx = 0;
+    while size >= 1024.0 && unit_idx < UNITS.len() - 1 {
+        size /= 1024.0;
+        unit_idx += 1;
+    }
+    if unit_idx == 0 {
+        format!("{} B", bytes)
+    } else {
+        format!("{:.2} {}", size, UNITS[unit_idx])
+    }
 }

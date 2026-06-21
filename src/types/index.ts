@@ -53,5 +53,15 @@ export interface ClearCacheResult {
   clearedPath: string;
 }
 
+/** Matches Rust CacheSizes */
+export interface CacheSizes {
+  thumbnailsSize: string;
+  thumbnailsBytes: number;
+  pagesSize: string;
+  pagesBytes: number;
+  totalSize: string;
+  totalBytes: number;
+}
+
 /** App view state */
 export type AppView = "library" | "reader";

@@ -67,3 +67,15 @@ pub struct AppPaths {
 pub struct ClearCacheResult {
     pub cleared_path: String,
 }
+
+/// Cache directory sizes (human-readable strings + raw bytes).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheSizes {
+    pub thumbnails_size: String,
+    pub thumbnails_bytes: u64,
+    pub pages_size: String,
+    pub pages_bytes: u64,
+    pub total_size: String,
+    pub total_bytes: u64,
+}

@@ -72,6 +72,7 @@ pub fn run() {
             commands::get_app_paths,
             commands::clear_current_cache,
             commands::clear_all_cache,
+            commands::get_cache_sizes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
