@@ -43,7 +43,6 @@ pub struct ScanResult {
 /// Progress event emitted during scanning.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 pub struct ScanProgress {
     pub current: usize,
     pub total: usize,

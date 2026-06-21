@@ -192,7 +192,6 @@ pub fn get_all_file_paths(conn: &Connection) -> SqliteResult<Vec<String>> {
 }
 
 /// Delete comics whose file_path starts with the given prefix.
-#[allow(dead_code)]
 pub fn delete_comics_by_prefix(conn: &Connection, prefix: &str) -> SqliteResult<usize> {
     let count = conn.execute(
         "DELETE FROM comics WHERE file_path LIKE ?1",

@@ -1,6 +1,6 @@
 # Comic Reader — Tauri v2 + Rust + React
 
-Local comic/manga reader that scans directories of ZIP/CBZ files, indexes them in SQLite, generates WebP cover thumbnails, and reads pages directly from ZIPs via a Tauri asset protocol.
+Local comic/manga reader that scans directories of ZIP/CBZ files, indexes them in SQLite, generates WebP cover thumbnails, and reads pages from ZIPs via extract-to-disk cache + convertFileSrc.
 
 ## Project Structure
 
@@ -25,8 +25,7 @@ src-tauri/src/                # Rust backend
 ├── db.rs                     # SQLite init, CRUD, config KV store
 ├── models.rs                 # Serde structs shared with frontend
 ├── scanner.rs                # Library scanner (walkdir + rayon + db insert)
-├── thumbnail.rs              # WebP cover thumbnail generation
-└── protocol.rs               # (If present) Custom protocol handler
+└── thumbnail.rs              # WebP cover thumbnail generation
 ```
 
 ## Key Architecture
@@ -90,6 +89,7 @@ src-tauri/src/                # Rust backend
 - Delete confirmation dialog: also portal to body
 - Confirm popover (clear all cache): rendered **inline** inside a `position: relative` wrapper (`.settings-popover-anchor`) around the trigger button. Uses `position: absolute; bottom: calc(100% + 10px)` — no portal, no JS position calculation, no z-index. Scrolls naturally with the settings content and is clipped by `overflow-y: auto`. Only JS is click-outside + Escape to dismiss.
 - Context menu: portal to body, positioned at `clientX`/`clientY`
+- Toast notifications: portal to body, `position: fixed` at top-center, auto-dismiss via `useEffect` timer (3s), slide-in animation (`@keyframes toast-in`)
 
 ### Search
 - Simple case-insensitive substring match (`indexOf`), not fuzzy
@@ -122,6 +122,6 @@ npx tsc --noEmit            # TypeScript type-check (zero errors expected)
 
 ## CSS
 - All styles in `App.css`, no CSS modules or inline styles (except dynamic positioning)
-- CSS variables in `:root` for theming: `--bg`, `--bg-card`, `--text`, `--text-secondary`, `--accent`, `--border`, `--border-color`
+- CSS variables in `:root` for theming: `--bg-primary`, `--bg-secondary`, `--bg-card`, `--bg-hover`, `--text-primary`, `--text-secondary`, `--accent`, `--accent-hover`, `--border`, `--toolbar-height`, `--reader-header-height`
 - Custom scrollbar styles for settings dialog and other scrollable areas
-- Z-index layers: toolbar logo 10, context menu 1000, dialog overlay 2000
+- Z-index layers: toolbar logo 10, context menu 1000, dialog overlay 2000, toast 10000
