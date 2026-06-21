@@ -20,7 +20,6 @@ export function Toolbar() {
   const isScanning = useAppStore((s) => s.isScanning);
   const scanResult = useAppStore((s) => s.scanResult);
   const currentView = useAppStore((s) => s.currentView);
-  const goToLibrary = useAppStore((s) => s.goToLibrary);
 
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -115,11 +114,6 @@ export function Toolbar() {
   return (
     <div className="toolbar">
       <div className="toolbar-left">
-        {currentView === "reader" && (
-          <button className="toolbar-btn" onClick={goToLibrary}>
-            ← Library
-          </button>
-        )}
         <span className="toolbar-title">Comic Reader</span>
       </div>
 

@@ -41,6 +41,7 @@ export function LibraryView() {
   const upsertComic = useAppStore((s) => s.upsertComic);
   const setLibraryPath = useAppStore((s) => s.setLibraryPath);
   const openReader = useAppStore((s) => s.openReader);
+  const goToLibrary = useAppStore((s) => s.goToLibrary);
   const libraryPath = useAppStore((s) => s.libraryPath);
   const searchQuery = useAppStore((s) => s.searchQuery);
 
@@ -110,9 +111,10 @@ export function LibraryView() {
     };
   }, [upsertComic]);
 
-  // Listen for cache-cleared — refresh to empty list
+  // Listen for cache-cleared — refresh to empty list and go back to library
   useEffect(() => {
     const unlisten = listen("cache-cleared", async () => {
+      goToLibrary();
       try {
         const fresh = await invoke<ComicInfo[]>("get_comics");
         setComics(fresh);
@@ -123,7 +125,7 @@ export function LibraryView() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [setComics]);
+  }, [setComics, goToLibrary]);
 
   // Listen for scan-complete — do a full refresh to catch removals
   useEffect(() => {
