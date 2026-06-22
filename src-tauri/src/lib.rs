@@ -17,22 +17,25 @@ fn get_app_data_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
         let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(appdata).join(identifier)
+        return PathBuf::from(appdata).join(identifier);
     }
 
     #[cfg(target_os = "macos")]
     {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home)
+        return PathBuf::from(home)
             .join("Library")
             .join("Application Support")
-            .join(identifier)
+            .join(identifier);
     }
 
     #[cfg(target_os = "linux")]
     {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".local").join("share").join(identifier)
+        let xdg_data = std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            format!("{home}/.local/share")
+        });
+        return PathBuf::from(xdg_data).join(identifier);
     }
 }
 
@@ -47,8 +50,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
-            std::fs::create_dir_all(&app_data_dir)
-                .expect("Failed to create app data directory");
+            std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data directory");
             std::fs::create_dir_all(&cache_root).expect("Failed to create cache directory");
 
             // Initialize the database schema with a temporary connection.
@@ -56,14 +58,11 @@ pub fn run() {
 
             // Create a connection pool so multiple readers (e.g. frontend queries)
             // don't block each other on a single Mutex.
-            let manager = SqliteConnectionManager::file(&db_path)
-                .with_init(|conn| {
-                    // Per-connection pragmas: foreign_keys enforcement and busy timeout
-                    // so concurrent writers wait instead of failing with SQLITE_BUSY.
-                    conn.execute_batch(
-                        "PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;",
-                    )
-                });
+            let manager = SqliteConnectionManager::file(&db_path).with_init(|conn| {
+                // Per-connection pragmas: foreign_keys enforcement and busy timeout
+                // so concurrent writers wait instead of failing with SQLITE_BUSY.
+                conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;")
+            });
             let pool: DbPool = Pool::builder()
                 .max_size(6)
                 .build(manager)
