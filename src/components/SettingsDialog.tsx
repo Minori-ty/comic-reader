@@ -14,7 +14,7 @@ export function SettingsDialog({ onClose }: Props) {
     const [tab, setTab] = useState<Tab>('storage')
     const [paths, setPaths] = useState<AppPaths | null>(null)
     const [sizes, setSizes] = useState<CacheSizes | null>(null)
-    const [clearing, setClearing] = useState<'thumbnails' | 'pages' | 'current' | 'all' | null>(null)
+    const [clearing, setClearing] = useState<'pages' | 'current' | 'all' | null>(null)
     const [lastCleared, setLastCleared] = useState<string | null>(null)
     const [confirmPopover, setConfirmPopover] = useState(false)
 
@@ -49,18 +49,6 @@ export function SettingsDialog({ onClose }: Props) {
             loadData()
         } catch (e) {
             console.error('clear_current_cache:', e)
-        }
-        setClearing(null)
-    }
-
-    const handleClearThumbnails = async () => {
-        setClearing('thumbnails')
-        try {
-            const result = await invoke<ClearCacheResult>('clear_thumbnails_cache')
-            setLastCleared(result.clearedPath)
-            loadData()
-        } catch (e) {
-            console.error('clear_thumbnails_cache:', e)
         }
         setClearing(null)
     }
@@ -155,8 +143,6 @@ export function SettingsDialog({ onClose }: Props) {
                                             label="封面缩略图"
                                             path={paths.thumbnailsDir}
                                             size={sizes?.thumbnailsSize}
-                                            onClear={handleClearThumbnails}
-                                            clearing={clearing === 'thumbnails'}
                                         />
                                         <PathRow
                                             label="页面缓存"
