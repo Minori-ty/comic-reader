@@ -4,11 +4,14 @@ use std::path::Path;
 use crate::models::{ComicInfo, PageInfo};
 
 /// Initialize the SQLite database: create tables and indexes if they don't exist.
-pub fn init_db(db_path: &Path) -> SqliteResult<Connection> {
+///
+/// This runs once at startup. The returned connection closes after initialisation;
+/// all subsequent access goes through the r2d2 connection pool.
+pub fn init_db(db_path: &Path) -> SqliteResult<()> {
     let conn = Connection::open(db_path)?;
 
-    // Enable WAL mode for better concurrent read performance
-    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+    // Enable WAL mode for better concurrent read performance (persistent setting).
+    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
 
     conn.execute_batch(
         "
@@ -44,7 +47,7 @@ pub fn init_db(db_path: &Path) -> SqliteResult<Connection> {
         ",
     )?;
 
-    Ok(conn)
+    Ok(())
 }
 
 // ── Config ───────────────────────────────────────────
@@ -248,7 +251,6 @@ pub fn clear_cover_paths_by_prefix(conn: &Connection, prefix: &str) -> SqliteRes
 }
 
 // Helper: turn a rusqlite Optional extension into something we can use
-// (rusqlite doesn't have .optional() by default in all versions, so we polyfill)
 trait OptionalExt<T> {
     fn optional(self) -> SqliteResult<Option<T>>;
 }

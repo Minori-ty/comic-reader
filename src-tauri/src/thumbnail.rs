@@ -1,8 +1,7 @@
-use image::codecs::webp::WebPEncoder;
 use image::imageops::FilterType;
 use image::ImageReader;
 use std::fs;
-use std::io::{BufWriter, Cursor};
+use std::io::Cursor;
 use std::path::Path;
 
 /// Image file extensions we recognize as comic pages (case-insensitive).
@@ -15,6 +14,9 @@ const THUMBNAIL_WIDTH: u32 = 200;
 ///
 /// Callers that already have the ZIP open (e.g. the scanner extracting page lists)
 /// can use this to avoid opening the ZIP twice.
+///
+/// Uses the `webp` crate for **lossy** encoding at quality 85 — 3-5× faster than
+/// lossless and visually identical at thumbnail dimensions.
 pub fn generate_thumbnail_from_bytes(
     image_bytes: &[u8],
     thumbnail_dir: &Path,
@@ -34,13 +36,14 @@ pub fn generate_thumbnail_from_bytes(
     let thumb_filename = format!("{}.webp", comic_id);
     let thumb_path = thumbnail_dir.join(&thumb_filename);
 
-    let output_file = fs::File::create(&thumb_path)
-        .map_err(|e| format!("Failed to create thumbnail file: {}", e))?;
-    let mut writer = BufWriter::new(output_file);
-    let encoder = WebPEncoder::new_lossless(&mut writer);
-    thumb
-        .write_with_encoder(encoder)
-        .map_err(|e| format!("Failed to encode WebP: {}", e))?;
+    // Encode to lossy WebP at quality 85.
+    // `webp::Encoder` writes into a `WebPMemory` buffer; we flush it to disk below.
+    let rgba = thumb.to_rgba8();
+    let encoded = webp::Encoder::from_rgba(&rgba, rgba.width(), rgba.height())
+        .encode(85.0);
+
+    fs::write(&thumb_path, &*encoded)
+        .map_err(|e| format!("Failed to write thumbnail: {}", e))?;
 
     Ok(thumb_filename)
 }

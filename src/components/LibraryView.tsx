@@ -38,7 +38,7 @@ interface DeleteDialogState {
 export function LibraryView() {
   const comics = useAppStore((s) => s.comics);
   const setComics = useAppStore((s) => s.setComics);
-  const upsertComic = useAppStore((s) => s.upsertComic);
+  const batchUpsertComics = useAppStore((s) => s.batchUpsertComics);
   const setLibraryPath = useAppStore((s) => s.setLibraryPath);
   const openReader = useAppStore((s) => s.openReader);
   const goToLibrary = useAppStore((s) => s.goToLibrary);
@@ -102,15 +102,27 @@ export function LibraryView() {
     loadInitialData();
   }, []);
 
-  // Listen for incremental comic updates during scanning
+  // Listen for incremental comic updates during scanning (batched in 100 ms windows)
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let batch: ComicInfo[] = [];
+
     const unlisten = listen<ComicInfo>("comic-indexed", (event) => {
-      upsertComic(event.payload);
+      batch.push(event.payload);
+      if (timer === null) {
+        timer = setTimeout(() => {
+          const items = batch;
+          batch = [];
+          timer = null;
+          batchUpsertComics(items);
+        }, 100);
+      }
     });
     return () => {
       unlisten.then((fn) => fn());
+      if (timer !== null) clearTimeout(timer);
     };
-  }, [upsertComic]);
+  }, [batchUpsertComics]);
 
   // Listen for cache-cleared — refresh to empty list and go back to library
   useEffect(() => {

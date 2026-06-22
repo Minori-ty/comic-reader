@@ -447,6 +447,15 @@ body,
   font-size: 14px;
 }
 
+.reader-page-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 .reader-page-number {
   padding: 8px 0;
   text-align: center;

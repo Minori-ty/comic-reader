@@ -4,9 +4,10 @@ mod models;
 mod scanner;
 mod thumbnail;
 
-use commands::AppState;
+use commands::{AppState, DbPool};
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tauri::Manager;
 
 /// Get the app data directory based on OS conventions.
@@ -50,10 +51,26 @@ pub fn run() {
                 .expect("Failed to create app data directory");
             std::fs::create_dir_all(&cache_root).expect("Failed to create cache directory");
 
-            let conn = db::init_db(&db_path).expect("Failed to initialize database");
+            // Initialize the database schema with a temporary connection.
+            db::init_db(&db_path).expect("Failed to initialize database");
+
+            // Create a connection pool so multiple readers (e.g. frontend queries)
+            // don't block each other on a single Mutex.
+            let manager = SqliteConnectionManager::file(&db_path)
+                .with_init(|conn| {
+                    // Per-connection pragmas: foreign_keys enforcement and busy timeout
+                    // so concurrent writers wait instead of failing with SQLITE_BUSY.
+                    conn.execute_batch(
+                        "PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;",
+                    )
+                });
+            let pool: DbPool = Pool::builder()
+                .max_size(6)
+                .build(manager)
+                .expect("Failed to create database pool");
 
             app.manage(AppState {
-                db: Mutex::new(conn),
+                db: pool,
                 cache_root,
             });
 

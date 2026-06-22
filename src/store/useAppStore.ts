@@ -19,6 +19,8 @@ interface AppState {
   setComics: (comics: ComicInfo[]) => void;
   /** Insert or replace a single comic (for real-time scan updates). */
   upsertComic: (comic: ComicInfo) => void;
+  /** Batch insert or replace multiple comics — one array copy, one render. */
+  batchUpsertComics: (comics: ComicInfo[]) => void;
   setScanResult: (result: ScanResult | null) => void;
   setScanProgress: (progress: ScanProgress | null) => void;
   setIsScanning: (scanning: boolean) => void;
@@ -59,6 +61,26 @@ export const useAppStore = create<AppState>((set) => ({
         );
       }
       return { comics: newComics };
+    }),
+
+  /** Batch insert/update — one array copy + one sort, then one render. */
+  batchUpsertComics: (incoming) =>
+    set((state) => {
+      if (incoming.length === 0) return {};
+      const existing = new Map<number, ComicInfo>(
+        state.comics.map((c) => [c.id, c]),
+      );
+      for (const comic of incoming) {
+        existing.set(comic.id, comic);
+      }
+      const merged = Array.from(existing.values());
+      merged.sort((a, b) =>
+        a.fileName.localeCompare(b.fileName, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+      return { comics: merged };
     }),
 
   setScanResult: (result) => set({ scanResult: result }),

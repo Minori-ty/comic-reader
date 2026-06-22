@@ -1,16 +1,18 @@
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::db;
 use crate::models::{AppPaths, CacheSizes, ClearCacheResult, ComicInfo, PageInfo, ScanResult};
 use crate::scanner;
 
+/// r2d2 connection pool type specialised for SQLite.
+pub type DbPool = r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>;
+
 /// Shared application state.
 pub struct AppState {
-    pub db: Mutex<rusqlite::Connection>,
+    pub db: DbPool,
     /// Root cache directory: `{app_data}/cache/`.
     /// Scoped per-library subdirectories are created inside this.
     pub cache_root: PathBuf,
@@ -29,7 +31,7 @@ fn library_cache_dir(cache_root: &Path, library_path: &str) -> PathBuf {
 pub async fn get_library_path(
     state: State<'_, AppState>,
 ) -> Result<Option<String>, String> {
-    let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+    let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
     db::get_config(&conn, "library_path").map_err(|e| format!("DB error: {}", e))
 }
 
@@ -38,11 +40,12 @@ pub async fn get_library_path(
 pub async fn get_app_paths(
     state: State<'_, AppState>,
 ) -> Result<AppPaths, String> {
-    let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
-    let library_path = db::get_config(&conn, "library_path")
-        .map_err(|e| format!("DB error: {}", e))?
-        .unwrap_or_default();
-    drop(conn);
+    let library_path = {
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
+        db::get_config(&conn, "library_path")
+            .map_err(|e| format!("DB error: {}", e))?
+            .unwrap_or_default()
+    };
 
     let app_data_dir = state
         .cache_root
@@ -66,7 +69,7 @@ pub async fn get_cache_sizes(
     state: State<'_, AppState>,
 ) -> Result<CacheSizes, String> {
     let library_path = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_config(&conn, "library_path")
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default()
@@ -99,7 +102,7 @@ pub async fn set_library_path(
 ) -> Result<ScanResult, String> {
     // Persist the path
     {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::set_config(&conn, "library_path", &path)
             .map_err(|e| format!("DB error: {}", e))?;
     }
@@ -123,7 +126,7 @@ pub async fn scan_library(
     state: State<'_, AppState>,
 ) -> Result<ScanResult, String> {
     let library_path: Option<String> = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_config(&conn, "library_path").map_err(|e| format!("DB error: {}", e))?
     };
 
@@ -148,7 +151,7 @@ pub async fn get_comics(
     state: State<'_, AppState>,
 ) -> Result<Vec<ComicInfo>, String> {
     let (library_path, mut comics) = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         let path = db::get_config(&conn, "library_path")
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default();
@@ -215,7 +218,7 @@ pub async fn get_comic_pages(
     comic_id: i64,
     state: State<'_, AppState>,
 ) -> Result<Vec<PageInfo>, String> {
-    let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+    let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
     db::get_pages(&conn, comic_id).map_err(|e| format!("DB error: {}", e))
 }
 
@@ -228,7 +231,7 @@ pub async fn delete_comic(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let (file_path, _library_path, cache_thumb_path, cache_pages_dir) = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
 
         let comic = db::get_comic_by_id(&conn, comic_id)
             .map_err(|e| format!("DB error: {}", e))?
@@ -277,7 +280,7 @@ pub async fn clear_thumbnails_cache(
     state: State<'_, AppState>,
 ) -> Result<ClearCacheResult, String> {
     let library_path = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_config(&conn, "library_path")
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default()
@@ -293,7 +296,7 @@ pub async fn clear_thumbnails_cache(
 
     // Reset cover_path in DB so covers get regenerated
     if !library_path.is_empty() {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         let _ = db::clear_cover_paths_by_prefix(&conn, &library_path)
             .map_err(|e| format!("DB error: {}", e))?;
     }
@@ -313,7 +316,7 @@ pub async fn clear_pages_cache(
     state: State<'_, AppState>,
 ) -> Result<ClearCacheResult, String> {
     let library_path = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_config(&conn, "library_path")
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default()
@@ -341,7 +344,7 @@ pub async fn clear_current_cache(
     state: State<'_, AppState>,
 ) -> Result<ClearCacheResult, String> {
     let library_path = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_config(&conn, "library_path")
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default()
@@ -357,7 +360,7 @@ pub async fn clear_current_cache(
 
     // Also delete DB records whose file_path starts with the library path
     if !library_path.is_empty() {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::delete_comics_by_prefix(&conn, &library_path)
             .map_err(|e| format!("DB error: {}", e))?;
     }
@@ -385,7 +388,7 @@ pub async fn clear_all_cache(
 
     // Wipe all comics and pages from the database
     {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         conn.execute_batch(
             "DELETE FROM comic_pages; DELETE FROM comics;"
         ).map_err(|e| format!("DB error: {}", e))?;
@@ -407,7 +410,7 @@ pub async fn get_cover_file_path(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let library_path = {
-        let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_config(&conn, "library_path")
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default()
@@ -427,54 +430,72 @@ pub async fn get_cover_file_path(
 
 /// Get the absolute filesystem path to a comic page, extracting it from the
 /// ZIP to a cache directory on first access.
+///
+/// **IMPORTANT:** DB queries and ZIP extraction are now separated — the pool
+/// connection is released *before* the slow ZIP decompression so that other
+/// commands (library browsing, search, etc.) are never blocked.
 #[tauri::command]
 pub async fn get_page_file_path(
     comic_id: i64,
     page_idx: i64,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let conn = state.db.lock().map_err(|e| format!("Lock error: {}", e))?;
+    // ── Phase 1: DB lookups (hold pool connection briefly) ──
+    let (library_path, comic_path, page_file_name) = {
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
 
-    let library_path = db::get_config(&conn, "library_path")
-        .map_err(|e| format!("DB error: {}", e))?
-        .unwrap_or_default();
+        let library_path = db::get_config(&conn, "library_path")
+            .map_err(|e| format!("DB error: {}", e))?
+            .unwrap_or_default();
 
+        let scoped = library_cache_dir(&state.cache_root, &library_path);
+        let pages_cache_dir = scoped.join("pages").join(comic_id.to_string());
+
+        // Check if already extracted
+        for ext in &["jpg", "jpeg", "png", "webp", "bmp", "gif"] {
+            let path = pages_cache_dir.join(format!("{}.{}", page_idx, ext));
+            if path.exists() {
+                return Ok(path.to_string_lossy().to_string());
+            }
+        }
+
+        // Look up the comic and page
+        let comic = db::get_comic_by_id(&conn, comic_id)
+            .map_err(|e| format!("DB error: {}", e))?
+            .ok_or_else(|| format!("Comic not found: {}", comic_id))?;
+
+        let pages = db::get_pages(&conn, comic_id)
+            .map_err(|e| format!("DB error: {}", e))?;
+
+        let page = pages
+            .get(page_idx as usize)
+            .ok_or_else(|| format!("Page {} not found in comic {}", page_idx, comic_id))?;
+
+        (
+            library_path,
+            comic.file_path,
+            page.file_name.clone(),
+        )
+    }; // ← pool connection released here, before ZIP I/O
+
+    // ── Phase 2: ZIP extraction (no pool connection held) ──
     let scoped = library_cache_dir(&state.cache_root, &library_path);
     let pages_cache_dir = scoped.join("pages").join(comic_id.to_string());
 
-    // Check if already extracted
-    for ext in &["jpg", "jpeg", "png", "webp", "bmp", "gif"] {
-        let path = pages_cache_dir.join(format!("{}.{}", page_idx, ext));
-        if path.exists() {
-            return Ok(path.to_string_lossy().to_string());
-        }
-    }
-
-    // Look up the comic and page
-    let comic = db::get_comic_by_id(&conn, comic_id)
-        .map_err(|e| format!("DB error: {}", e))?
-        .ok_or_else(|| format!("Comic not found: {}", comic_id))?;
-
-    let pages = db::get_pages(&conn, comic_id).map_err(|e| format!("DB error: {}", e))?;
-    let page = pages
-        .get(page_idx as usize)
-        .ok_or_else(|| format!("Page {} not found in comic {}", page_idx, comic_id))?;
-
-    // Extract from ZIP
     let zip_file =
-        fs::File::open(&comic.file_path).map_err(|e| format!("Cannot open zip: {}", e))?;
+        fs::File::open(&comic_path).map_err(|e| format!("Cannot open zip: {}", e))?;
     let mut archive =
         zip::read::ZipArchive::new(zip_file).map_err(|e| format!("Bad zip: {}", e))?;
     let mut entry = archive
-        .by_name(&page.file_name)
-        .map_err(|e| format!("Entry '{}' not found: {}", page.file_name, e))?;
+        .by_name(&page_file_name)
+        .map_err(|e| format!("Entry '{}' not found: {}", page_file_name, e))?;
 
     let mut buf = Vec::with_capacity(entry.size() as usize);
     entry
         .read_to_end(&mut buf)
         .map_err(|e| format!("Failed to decompress: {}", e))?;
 
-    let ext = std::path::Path::new(&page.file_name)
+    let ext = std::path::Path::new(&page_file_name)
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("jpg");

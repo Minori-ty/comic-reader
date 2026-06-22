@@ -1,5 +1,4 @@
 use rayon::prelude::*;
-use rusqlite::Connection;
 use std::collections::HashSet;
 use std::fs;
 use std::io::{Read, Seek};
@@ -9,6 +8,7 @@ use std::sync::Mutex;
 use tauri::Emitter;
 use walkdir::WalkDir;
 
+use crate::commands::DbPool;
 use crate::db;
 use crate::models::ComicInfo;
 use crate::models::ScanProgress;
@@ -29,14 +29,15 @@ struct FileEntry {
 ///
 /// **Parallelism:** Phase 1 (file discovery + hashing) and Phase 3 (DB check →
 /// ZIP extraction → thumbnail → DB write) both use rayon parallel iterators.
-/// The DB Mutex is locked only briefly per comic (steps 3a, 3b, 3d) so the
-/// heavy I/O and CPU work (3c) runs concurrently across all cores.
+/// Each rayon task gets its own connection from the r2d2 pool, so the heavy
+/// I/O and CPU work (3c) runs concurrently across all cores without blocking
+/// other conncurrent readers.
 ///
 /// After each comic is indexed, a `comic-indexed` event is emitted so the
 /// frontend can update the grid in real time.
 pub fn scan_library(
     base_dir: &Path,
-    db: &Mutex<Connection>,
+    db: &DbPool,
     cache_dir: &Path,
     app: &tauri::AppHandle,
 ) -> Result<ScanResult, String> {
@@ -61,10 +62,10 @@ pub fn scan_library(
         })
         .collect();
 
-    // ── Phase 2: Get current DB state (lock briefly) ──
+    // ── Phase 2: Get current DB state (brief pool connection) ──
 
     let db_paths: HashSet<String> = {
-        let conn = db.lock().map_err(|e| format!("DB lock: {}", e))?;
+        let conn = db.get().map_err(|e| format!("Pool error: {}", e))?;
         db::get_all_file_paths(&conn)
             .map_err(|e| format!("DB error: {}", e))?
             .into_iter()
@@ -74,13 +75,13 @@ pub fn scan_library(
     // ── Phase 3: Process each comic in parallel ──
     //
     // Each rayon task:
-    //   3a) DB lock → check hash / page_count
-    //   3b) DB lock → insert or update record → get comic_id
-    //   3c) NO lock → open ZIP, list entries, generate thumbnail (CPU + I/O heavy)
-    //   3d) DB lock → save pages + update page_count + set cover
+    //   3a) Pool get → check hash / page_count
+    //   3b) Pool get → insert or update record → get comic_id
+    //   3c) NO pool → open ZIP, list entries, generate thumbnail (CPU + I/O heavy)
+    //   3d) Pool get → save pages + update page_count + set cover
     //
-    // Because the DB lock is held only for milliseconds while ZIP extraction
-    // takes seconds, throughput scales nearly linearly with core count.
+    // Because each connection is returned to the pool between steps, the
+    // scanner never starves other commands (library refresh, reader, …).
 
     let processed = AtomicUsize::new(0);
     let new_comics = AtomicUsize::new(0);
@@ -94,9 +95,9 @@ pub fn scan_library(
         let path_str = entry.path.to_string_lossy().to_string();
         scanned_paths.lock().unwrap().insert(path_str.clone());
 
-        // Step 3a: Check whether this file needs (re-)indexing (lock briefly).
+        // Step 3a: Check whether this file needs (re-)indexing (brief pool get).
         let needs_processing = {
-            let conn = db.lock().unwrap();
+            let conn = db.get().unwrap();
             db::get_comic_hash_and_page_count(&conn, &path_str)
                 .map_or(true, |existing| match existing {
                     Some((h, pc)) => &h != hash || pc == 0,
@@ -112,9 +113,9 @@ pub fn scan_library(
         } else {
             let is_update = db_paths.contains(&path_str);
 
-            // Step 3b: Insert/update comic record, get an ID (lock briefly)
+            // Step 3b: Insert/update comic record, get an ID (brief pool get)
             let comic_id = {
-                let conn = db.lock().unwrap();
+                let conn = db.get().unwrap();
                 if is_update {
                     match (|| -> Result<i64, String> {
                         let id = db::get_comic_id(&conn, &path_str)
@@ -174,16 +175,16 @@ pub fn scan_library(
                         }
                     }
                 }
-            }; // DB lock released
+            }; // pool connection returned
 
-            // Step 3c: Extract pages + generate thumbnail (no DB lock — parallel!)
+            // Step 3c: Extract pages + generate thumbnail (no pool — parallel I/O)
             match process_comic_assets(&entry.path, &thumbnail_dir, comic_id) {
                 Ok((pages, cover_filename)) => {
                     let page_count = pages.len() as i64;
 
-                    // Step 3d: Save pages and finalise metadata (lock briefly)
+                    // Step 3d: Save pages and finalise metadata (brief pool get)
                     {
-                        let conn = db.lock().unwrap();
+                        let conn = db.get().unwrap();
                         let _ = db::insert_pages(&conn, comic_id, &pages);
                         let _ = conn.execute(
                             "UPDATE comics SET page_count = ?1 WHERE id = ?2",
@@ -245,12 +246,12 @@ pub fn scan_library(
         );
     });
 
-    // ── Phase 4: Remove stale entries (lock briefly) ──
+    // ── Phase 4: Remove stale entries (brief pool connection) ──
 
     let mut removed_comics = 0usize;
     let scanned = scanned_paths.into_inner().unwrap();
     {
-        let conn = db.lock().map_err(|e| format!("DB lock: {}", e))?;
+        let conn = db.get().map_err(|e| format!("Pool error: {}", e))?;
         for db_path in &db_paths {
             if !scanned.contains(db_path) {
                 if let Ok(Some(comic_id)) = db::get_comic_id(&conn, db_path) {
@@ -345,6 +346,9 @@ fn compute_file_hash(path: &Path) -> Result<String, String> {
     Ok(hasher.finalize().to_hex().to_string())
 }
 
+/// A page entry ready for DB insert: `(page_idx, file_name, file_size)`.
+type PageEntry = (i64, String, i64);
+
 /// Extract the page list and generate a cover thumbnail from a comic ZIP.
 ///
 /// Opens the ZIP once, extracts all image entries (sorted by name) and
@@ -355,7 +359,7 @@ fn process_comic_assets(
     zip_path: &Path,
     thumbnail_dir: &Path,
     comic_id: i64,
-) -> Result<(Vec<(i64, String, i64)>, Option<String>), String> {
+) -> Result<(Vec<PageEntry>, Option<String>), String> {
     let file = fs::File::open(zip_path).map_err(|e| format!("Cannot open: {}", e))?;
     let mut archive =
         zip::read::ZipArchive::new(file).map_err(|e| format!("Bad zip: {}", e))?;
@@ -400,7 +404,7 @@ fn process_comic_assets(
     };
 
     // Build page list
-    let pages: Vec<(i64, String, i64)> = image_entries
+    let pages: Vec<PageEntry> = image_entries
         .into_iter()
         .enumerate()
         .map(|(idx, (name, size))| (idx as i64, name, size as i64))

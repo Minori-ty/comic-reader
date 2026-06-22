@@ -27,13 +27,23 @@ export function Toolbar() {
   const scanInProgress = useRef(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Listen for per-file scan progress events
+  // Listen for per-file scan progress events, throttled to rAF
   useEffect(() => {
+    let rafId: number | null = null;
+    let latest: ScanProgress | null = null;
+
     const unlisten = listen<ScanProgress>("scan-progress", (event) => {
-      setScanProgress(event.payload);
+      latest = event.payload;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          if (latest) setScanProgress(latest);
+          rafId = null;
+        });
+      }
     });
     return () => {
       unlisten.then((fn) => fn());
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [setScanProgress]);
 
