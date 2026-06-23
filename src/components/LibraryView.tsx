@@ -29,11 +29,11 @@ interface DeleteDialogState {
 }
 
 /**
- * Library view with a virtual-scrolled grid of comic covers.
+ * 漫画库视图 — 使用虚拟滚动的封面网格布局。
  *
- * Context menu and delete-confirmation dialog are managed as singletons
- * and rendered via portal to `document.body` so `position: fixed` works
- * regardless of the virtualiser's `transform` containers.
+ * 右键菜单和删除确认弹窗作为单例管理，
+ * 通过 createPortal 渲染到 `document.body`，
+ * 避免虚拟列表的 `transform` 容器影响 `position: fixed` 定位。
  */
 export function LibraryView() {
   const comics = useAppStore((s) => s.comics);
@@ -49,7 +49,7 @@ export function LibraryView() {
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // ── Substring search ──
+  // ── 子串搜索 ──
   const { filteredComics, matchMap } = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) {
@@ -63,7 +63,7 @@ export function LibraryView() {
       const idx = lowerName.indexOf(lowerQ);
       if (idx !== -1) {
         items.push(comic);
-        // Find all occurrences of the query in the fileName (case-insensitive)
+        // 查找 fileName 中所有匹配位置（不区分大小写）
         const ranges: [number, number][] = [];
         let start = 0;
         while (start < lowerName.length) {
@@ -78,7 +78,7 @@ export function LibraryView() {
     return { filteredComics: items, matchMap: map };
   }, [comics, searchQuery]);
 
-  // ── Singleton context menu state ──
+  // ── 右键菜单单例状态 ──
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
@@ -88,7 +88,7 @@ export function LibraryView() {
     fileName: "",
   });
 
-  // ── Delete confirmation dialog state ──
+  // ── 删除确认弹窗状态 ──
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
     visible: false,
     comicId: 0,
@@ -97,12 +97,12 @@ export function LibraryView() {
   });
   const [deleteLocalFile, setDeleteLocalFile] = useState(false);
 
-  // Load initial data on mount
+  // 挂载时加载初始数据
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // Listen for incremental comic updates during scanning (batched in 100 ms windows)
+  // 扫描期间监听增量漫画更新（100ms 窗口批量合并）
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let batch: ComicInfo[] = [];
@@ -124,7 +124,7 @@ export function LibraryView() {
     };
   }, [batchUpsertComics]);
 
-  // Listen for cache-cleared — refresh to empty list and go back to library
+  // 监听缓存清除事件 — 刷新列表并返回库视图
   useEffect(() => {
     const unlisten = listen("cache-cleared", async () => {
       goToLibrary();
@@ -140,7 +140,7 @@ export function LibraryView() {
     };
   }, [setComics, goToLibrary]);
 
-  // Listen for scan-complete — do a full refresh to catch removals
+  // 监听扫描完成事件 — 全量刷新以捕获已移除的文件
   useEffect(() => {
     const unlisten = listen<ScanResult>("scan-complete", async (event) => {
       console.log("Scan complete:", event.payload);
@@ -156,14 +156,14 @@ export function LibraryView() {
     };
   }, [setComics]);
 
-  // Track container width for grid column calculation
+  // 跟踪容器宽度，用于计算网格列数
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
     setContainerWidth(el.clientWidth);
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // Ignore 0-width reports when the container is hidden (display:none)
+        // 忽略容器隐藏时（display:none）的 0 宽度报告
         if (entry.contentRect.width > 0) {
           setContainerWidth(entry.contentRect.width);
         }
@@ -173,7 +173,7 @@ export function LibraryView() {
     return () => observer.disconnect();
   }, []);
 
-  // ── Context menu: close on click outside / Escape ──
+  // ── 右键菜单：点击外部或按 Escape 关闭 ──
   useEffect(() => {
     if (!contextMenu.visible) return;
 
@@ -197,7 +197,7 @@ export function LibraryView() {
     };
   }, [contextMenu.visible]);
 
-  // ── Delete dialog: close on Escape ──
+  // ── 删除弹窗：按 Escape 关闭 ──
   useEffect(() => {
     if (!deleteDialog.visible) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -268,7 +268,7 @@ export function LibraryView() {
         comicId: deleteDialog.comicId,
         deleteLocalFile,
       });
-      // Remove from local state immediately
+      // 立即从本地状态移除
       setComics(comics.filter((c) => c.id !== deleteDialog.comicId));
     } catch (e) {
       console.error("delete_comic:", e);
@@ -280,7 +280,7 @@ export function LibraryView() {
     setDeleteDialog((s) => ({ ...s, visible: false }));
   }, []);
 
-  // Calculate grid layout
+  // 计算网格布局
   const columns = useMemo(() => {
     const w = containerWidth || 800;
     if (w < CARD_WIDTH) return 1;
@@ -301,8 +301,8 @@ export function LibraryView() {
       {!libraryPath ? (
         <div className="library-empty">
           <div className="library-empty-icon">📚</div>
-          <h2>Welcome to Comic Reader</h2>
-          <p>Select a directory containing your comic ZIP files to get started.</p>
+          <h2>欢迎使用 Comic Reader</h2>
+          <p>选择一个包含漫画 ZIP/CBZ 文件的目录开始使用。</p>
         </div>
       ) : isScanning && comics.length === 0 ? (
         <div className="library-loading">
@@ -313,18 +313,17 @@ export function LibraryView() {
       ) : filteredComics.length === 0 && searchQuery.trim() ? (
         <div className="library-empty">
           <div className="library-empty-icon">🔍</div>
-          <h2>No Results</h2>
+          <h2>无结果</h2>
           <p>
-            No comics match "{searchQuery}". Try a different search term.
+            没有匹配 "{searchQuery}" 的漫画，请尝试其他关键词。
           </p>
         </div>
       ) : comics.length === 0 ? (
         <div className="library-empty">
           <div className="library-empty-icon">🔍</div>
-          <h2>No Comics Found</h2>
+          <h2>未找到漫画</h2>
           <p>
-            No ZIP/CBZ files were found in the selected directory. Click "Scan"
-            to search for comics.
+            所选目录中未找到 ZIP/CBZ 文件，点击"扫描"按钮重新搜索。
           </p>
         </div>
       ) : (
@@ -382,7 +381,7 @@ export function LibraryView() {
         </div>
       )}
 
-      {/* ── Context menu (portal → body) ── */}
+      {/* ── 右键菜单（portal → body） ── */}
       {contextMenu.visible &&
         createPortal(
           <div
@@ -409,7 +408,7 @@ export function LibraryView() {
           document.body,
         )}
 
-      {/* ── Delete confirmation dialog (portal → body) ── */}
+      {/* ── 删除确认弹窗（portal → body） ── */}
       {deleteDialog.visible &&
         createPortal(
           <div className="dialog-overlay" onClick={handleCancelDelete}>

@@ -9,7 +9,7 @@ interface Props {
     onClose: () => void
 }
 
-/** Settings dialog with a sidebar layout. */
+/** 设置弹窗 — 采用侧边栏布局。 */
 export function SettingsDialog({ onClose }: Props) {
     const [tab, setTab] = useState<Tab>('storage')
     const [paths, setPaths] = useState<AppPaths | null>(null)
@@ -18,7 +18,7 @@ export function SettingsDialog({ onClose }: Props) {
     const [lastCleared, setLastCleared] = useState<string | null>(null)
     const [confirmPopover, setConfirmPopover] = useState(false)
 
-    // Load paths and cache sizes
+    // 加载路径和缓存大小
     const loadData = useCallback(() => {
         invoke<AppPaths>('get_app_paths')
             .then(setPaths)
@@ -32,7 +32,7 @@ export function SettingsDialog({ onClose }: Props) {
         loadData()
     }, [loadData])
 
-    // Close on Escape
+    // 按 Escape 关闭
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose()
@@ -80,7 +80,7 @@ export function SettingsDialog({ onClose }: Props) {
     return createPortal(
         <div className="dialog-overlay" onClick={onClose}>
             <div className="settings-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-                {/* Sidebar */}
+                {/* 侧边栏 */}
                 <nav className="settings-sidebar">
                     <div className="settings-sidebar-title">设置</div>
                     <button
@@ -125,7 +125,7 @@ export function SettingsDialog({ onClose }: Props) {
                     </button>
                 </nav>
 
-                {/* Content */}
+                {/* 内容区 */}
                 <div className="settings-content">
                     {tab === 'storage' && (
                         <>
@@ -160,7 +160,7 @@ export function SettingsDialog({ onClose }: Props) {
                                 )}
                             </div>
 
-                            {/* Clear cache buttons */}
+                            {/* 清除缓存按钮 */}
                             <div className="settings-cache-actions">
                                 <button
                                     className="dialog-btn dialog-btn-cancel"
@@ -225,7 +225,7 @@ export function SettingsDialog({ onClose }: Props) {
     )
 }
 
-/** A single path row: label, monospace path (copy on click), optional size badge and clear button. */
+/** 单条路径行：标签 + 等宽路径（点击复制）+ 可选的占用空间和清除按钮。 */
 function PathRow({
     label,
     path,
@@ -272,12 +272,12 @@ function PathRow({
     )
 }
 
-/** Popover anchored above the clear-all button. Rendered inline so it scrolls
- *  naturally with the settings content and is clipped by overflow-y: auto. */
+/** 清除全部按钮上方的气泡确认。在设置内容区内部渲染，
+ *  跟随内容自然滚动，由 overflow-y: auto 裁剪。 */
 function ConfirmPopover({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
     const popoverRef = useRef<HTMLDivElement>(null)
 
-    // Close on click outside / Escape
+    // 点击外部或按 Escape 关闭
     useEffect(() => {
         const handleMouseDown = (e: MouseEvent) => {
             if (popoverRef.current?.contains(e.target as Node)) return
@@ -311,7 +311,7 @@ function ConfirmPopover({ onCancel, onConfirm }: { onCancel: () => void; onConfi
     )
 }
 
-/** Toast notification — auto-dismisses after 3 seconds. */
+/** Toast 通知 — 3 秒后自动消失。 */
 function ClearToast({ message, onDone }: { message: string; onDone: () => void }) {
     useEffect(() => {
         const timer = setTimeout(onDone, 3000);
