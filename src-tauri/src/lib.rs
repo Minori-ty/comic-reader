@@ -81,6 +81,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_language,
+            commands::set_language,
             commands::get_library_path,
             commands::set_library_path,
             commands::scan_library,

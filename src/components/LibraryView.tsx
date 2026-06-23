@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -39,6 +40,7 @@ interface DeleteDialogState {
  * 避免虚拟列表的 `transform` 容器影响 `position: fixed` 定位。
  */
 export function LibraryView() {
+  const { t } = useTranslation()
   const navigate = useNavigate();
   const comics = useAppStore((s) => s.comics);
   const setComics = useAppStore((s) => s.setComics);
@@ -292,29 +294,29 @@ export function LibraryView() {
       {!libraryPath ? (
         <div className="library-empty">
           <div className="library-empty-icon">📚</div>
-          <h2>欢迎使用 Comic Reader</h2>
-          <p>选择一个包含漫画 ZIP/CBZ 文件的目录开始使用。</p>
+          <h2>{t('library.welcome')}</h2>
+          <p>{t('library.welcomeHint')}</p>
         </div>
       ) : isScanning && comics.length === 0 ? (
         <div className="library-loading">
           <div className="library-loading-spinner" />
-          <h2>正在扫描漫画…</h2>
-          <p>正在从目录中查找并索引漫画文件</p>
+          <h2>{t('library.scanning')}</h2>
+          <p>{t('library.scanningHint')}</p>
         </div>
       ) : filteredComics.length === 0 && searchQuery.trim() ? (
         <div className="library-empty">
           <div className="library-empty-icon">🔍</div>
-          <h2>无结果</h2>
+          <h2>{t('library.noResults')}</h2>
           <p>
-            没有匹配 "{searchQuery}" 的漫画，请尝试其他关键词。
+            {t('library.noResultsHint', { query: searchQuery })}
           </p>
         </div>
       ) : comics.length === 0 ? (
         <div className="library-empty">
           <div className="library-empty-icon">🔍</div>
-          <h2>未找到漫画</h2>
+          <h2>{t('library.noComics')}</h2>
           <p>
-            所选目录中未找到 ZIP/CBZ 文件，点击"扫描"按钮重新搜索。
+            {t('library.noComicsHint')}
           </p>
         </div>
       ) : (
@@ -377,14 +379,14 @@ export function LibraryView() {
               className="context-menu-item"
               onClick={handleOpenFileLocation}
             >
-              打开文件位置
+              {t('library.openFileLocation')}
             </button>
             <div className="context-menu-separator" />
             <button
               className="context-menu-item context-menu-item-danger"
               onClick={handleTriggerDelete}
             >
-              删除
+              {t('library.delete')}
             </button>
           </div>,
           document.body,
@@ -400,9 +402,9 @@ export function LibraryView() {
               role="dialog"
               aria-modal="true"
             >
-              <h3 className="dialog-title">确认删除</h3>
+              <h3 className="dialog-title">{t('library.confirmDelete')}</h3>
               <p className="dialog-message">
-                确定要删除「{deleteDialog.fileName}」吗？此操作不可撤销。
+                {t('library.deleteMsg', { name: deleteDialog.fileName })}
               </p>
 
               <label className="dialog-checkbox">
@@ -411,7 +413,7 @@ export function LibraryView() {
                   checked={deleteLocalFile}
                   onChange={(e) => setDeleteLocalFile(e.target.checked)}
                 />
-                <span>同时删除本地文件</span>
+                <span>{t('library.deleteLocal')}</span>
               </label>
 
               <div className="dialog-actions">
@@ -419,13 +421,13 @@ export function LibraryView() {
                   className="dialog-btn dialog-btn-cancel"
                   onClick={handleCancelDelete}
                 >
-                  取消
+                  {t('library.cancel')}
                 </button>
                 <button
                   className="dialog-btn dialog-btn-danger"
                   onClick={handleConfirmDelete}
                 >
-                  删除
+                  {t('library.delete')}
                 </button>
               </div>
             </div>

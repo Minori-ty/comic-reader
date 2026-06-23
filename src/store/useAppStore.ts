@@ -10,6 +10,10 @@ interface AppState {
   isScanning: boolean;
   searchQuery: string;
 
+  // Language
+  language: string;
+  setLanguage: (lang: string) => void;
+
   // Actions
   setLibraryPath: (path: string | null) => void;
   setComics: (comics: ComicInfo[]) => void;
@@ -30,6 +34,9 @@ export const useAppStore = create<AppState>((set) => ({
   scanProgress: null,
   isScanning: false,
   searchQuery: "",
+  language: "zh",
+
+  setLanguage: (language) => set({ language }),
 
   setLibraryPath: (path) => set({ libraryPath: path }),
   setComics: (comics) => set({ comics }),

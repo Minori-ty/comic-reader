@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { PageInfo } from '../types'
@@ -24,6 +25,7 @@ function estimatedPageHeight() {
  * 解压全部 200+ 页。
  */
 export function ReaderView() {
+    const { t } = useTranslation()
     const { comicId } = useParams<{ comicId: string }>();
     const navigate = useNavigate();
     const currentComicId = comicId ? Number(comicId) : null;
@@ -168,7 +170,7 @@ export function ReaderView() {
         return (
             <div className="reader-loading">
                 <div className="reader-loading-spinner" />
-                <p>加载漫画中…</p>
+                <p>{t('reader.loading')}</p>
             </div>
         )
     }
@@ -176,9 +178,9 @@ export function ReaderView() {
     if (error) {
         return (
             <div className="reader-error">
-                <h2>加载漫画失败</h2>
+                <h2>{t('reader.loadError')}</h2>
                 <p>{error}</p>
-                <button onClick={() => navigate('/')}>返回库</button>
+                <button onClick={() => navigate('/')}>{t('reader.backToLibrary')}</button>
             </div>
         )
     }
@@ -187,10 +189,10 @@ export function ReaderView() {
         <div className="reader-view">
             <div className="reader-header">
                 <button className="reader-back-btn" onClick={() => navigate('/')}>
-                    返回
+                    {t('reader.back')}
                 </button>
-                <span className="reader-title">{comic?.fileName ?? '阅读中'}</span>
-                <span className="reader-page-info">{pages.length} 页</span>
+                <span className="reader-title">{comic?.fileName ?? t('reader.reading')}</span>
+                <span className="reader-page-info">{t('reader.pages', { count: pages.length })}</span>
             </div>
 
             <div ref={scrollRef} className="reader-scroll">
@@ -222,7 +224,7 @@ export function ReaderView() {
                                 {imgSrc ? (
                                     <img
                                         src={imgSrc}
-                                        alt={`第 ${page.pageIdx + 1} 页`}
+                                        alt={t('reader.pageAlt', { n: page.pageIdx + 1 })}
                                         onError={(e) => {
                                             console.error(`Failed to load page ${page.pageIdx}:`, e)
                                         }}
@@ -232,7 +234,7 @@ export function ReaderView() {
                                         <div className="reader-page-spinner" />
                                     </div>
                                 )}
-                                <div className="reader-page-number"># {page.pageIdx + 1}</div>
+                                <div className="reader-page-number">{t('reader.pageNum', { n: page.pageIdx + 1 })}</div>
                             </div>
                         )
                     })}

@@ -1,0 +1,27 @@
+{
+  "mobile": {
+    "library": {
+      "title": "Comic Reader",
+      "count": "{{count}} 本",
+      "searchPlaceholder": "搜索漫画…",
+      "loading": "加载漫画库…",
+      "loadError": "加载失败",
+      "empty": "库为空",
+      "emptyHint": "请先在电脑端扫描漫画目录",
+      "noResults": "无结果",
+      "noResultsHint": "没有匹配 \"{{search}}\" 的漫画"
+    },
+    "language": {
+      "toggle": "语言: {{lang}}"
+    },
+    "reader": {
+      "back": "← 返回",
+      "error": "错误",
+      "loadError": "加载失败",
+      "loading": "加载中…",
+      "pages": "{{count}} 页",
+      "pageAlt": "第 {{n}} 页",
+      "pageNum": "{{current}} / {{total}}"
+    }
+  }
+}

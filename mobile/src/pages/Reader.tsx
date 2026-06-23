@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { fetchPages, pageUrl, type PageEntry } from "../api";
 
 export function Reader() {
+  const { t } = useTranslation()
   const { comicId } = useParams<{ comicId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,7 +42,7 @@ export function Reader() {
     return (
       <div className="loading-view">
         <div className="spinner" />
-        <p>加载中…</p>
+        <p>{t('mobile.reader.loading')}</p>
       </div>
     );
   }
@@ -50,12 +52,12 @@ export function Reader() {
       <div className="reader-page-wrap">
         <div className="reader-header">
           <button className="reader-back" onClick={() => navigate("/")}>
-            ← 返回
+            {t('mobile.reader.back')}
           </button>
-          <span className="reader-title">错误</span>
+          <span className="reader-title">{t('mobile.reader.error')}</span>
         </div>
         <div className="empty-view">
-          <h2>加载失败</h2>
+          <h2>{t('mobile.reader.loadError')}</h2>
           <p>{error}</p>
         </div>
       </div>
@@ -66,10 +68,10 @@ export function Reader() {
     <div className="reader-page-wrap">
       <div className="reader-header">
         <button className="reader-back" onClick={() => navigate("/")}>
-          ← 返回
+          {t('mobile.reader.back')}
         </button>
         <span className="reader-title">{title}</span>
-        <span className="reader-count">{pages.length} 页</span>
+        <span className="reader-count">{t('mobile.reader.pages', { count: pages.length })}</span>
       </div>
       <div ref={scrollRef} className="reader-scroll">
         <div
@@ -97,7 +99,7 @@ export function Reader() {
               >
                 <img
                   src={pageUrl(Number(comicId), p.pageIdx)}
-                  alt={`第 ${p.pageIdx + 1} 页`}
+                  alt={t('mobile.reader.pageAlt', { n: p.pageIdx + 1 })}
                   loading="lazy"
                   style={{ width: "100%", display: "block" }}
                   onError={(e) => {
@@ -111,7 +113,7 @@ export function Reader() {
                   <div className="spinner" />
                 </div>
                 <div className="page-num">
-                  {p.pageIdx + 1} / {pages.length}
+                  {t('mobile.reader.pageNum', { current: p.pageIdx + 1, total: pages.length })}
                 </div>
               </div>
             );

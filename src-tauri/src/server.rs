@@ -7,7 +7,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::{IntoResponse, Json, Response};
 use axum::routing::get;
 use axum::Router;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::commands::DbPool;
@@ -55,12 +55,6 @@ pub async fn run(
     let mobile_dist =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("mobile-dist");
 
-    eprintln!(
-        "[server] mobile-dist path: {} (exists: {})",
-        mobile_dist.display(),
-        mobile_dist.exists()
-    );
-
     // ── API router: all /api/* requests are handled by the dispatcher ──
     let api_router = Router::new()
         .fallback(api_dispatcher)
@@ -90,16 +84,13 @@ pub async fn run(
         .fallback_service(ServeFile::new(mobile_dist.join("index.html")));
 
     let addr = format!("0.0.0.0:{}", port);
-    eprintln!("[server] Attempting to bind to {}", addr);
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .map_err(|e| format!("端口 {} 绑定失败: {}", port, e))?;
-    eprintln!("[server] Bound successfully, starting serve on {}", addr);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             let _ = shutdown.await;
-            eprintln!("[server] Shutdown signal received");
         })
         .await
         .map_err(|e| format!("HTTP server error: {}", e))?;
@@ -118,8 +109,6 @@ async fn api_dispatcher(
     let path = full_path
         .strip_prefix("/api/")
         .unwrap_or_else(|| full_path.strip_prefix("/api").unwrap_or(&full_path));
-    eprintln!("[server] ==> api_dispatcher path='{}'", path);
-
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
 
     match segments.as_slice() {
@@ -127,8 +116,12 @@ async fn api_dispatcher(
         ["comics", id, "pages"] => list_pages_impl(state, id).await,
         ["image", "cover", comic_id] => serve_cover_impl(state, comic_id).await,
         ["image", "page", comic_id, page_idx] => serve_page_impl(state, comic_id, page_idx).await,
+        ["config", "language"] => match req.method().as_str() {
+            "GET" => get_language_api(state).await,
+            "POST" => set_language_api(state, req).await,
+            _ => Err(AppError::NotFoundWithDetail("Method not allowed".to_string())),
+        },
         _ => {
-            eprintln!("[server] api_dispatcher: no match for {:?}", segments);
             Err(AppError::NotFoundWithDetail(format!(
                 "Unknown API path: /api/{}",
                 path
@@ -148,12 +141,6 @@ async fn list_comics_impl(state: Arc<ShareState>) -> Result<Response, AppError> 
         let comics = db::get_all_comics(&conn).map_err(|e| format!("DB error: {}", e))?;
         (path, comics)
     };
-
-    eprintln!(
-        "[server] list_comics: library_path='{}' comics_count={}",
-        library_path,
-        comics.len()
-    );
 
     let scoped = library_cache_dir(&state.cache_root, &library_path);
 
@@ -199,7 +186,6 @@ async fn list_pages_impl(
         })
         .collect();
 
-    eprintln!("[server] list_pages: returning {} pages", entries.len());
     Ok(Json(entries).into_response())
 }
 
@@ -218,11 +204,6 @@ async fn serve_cover_impl(
             .unwrap_or_default()
     };
 
-    eprintln!(
-        "[server] serve_cover: library_path='{}' comic_id={}",
-        library_path, comic_id
-    );
-
     if library_path.is_empty() {
         return Err(AppError::NotFoundWithDetail(
             "未设置漫画库目录".to_string(),
@@ -235,21 +216,13 @@ async fn serve_cover_impl(
 
     match tokio::fs::read(&thumb_path).await {
         Ok(bytes) => {
-            eprintln!("[server] serve_cover: FOUND {} bytes", bytes.len());
             Ok(Response::builder()
                 .header(header::CONTENT_TYPE, "image/webp")
                 .header(header::CACHE_CONTROL, "public, max-age=3600")
                 .body(Body::from(bytes))
                 .unwrap())
         }
-        Err(e) => {
-            eprintln!(
-                "[cover] MISS comic_id={} library_path='{}' thumb_path='{}' err={}",
-                comic_id,
-                library_path,
-                thumb_path.display(),
-                e
-            );
+        Err(_e) => {
             Err(AppError::NotFoundWithDetail(format!(
                 "Cover file not found: {}",
                 thumb_path.display()
@@ -283,7 +256,6 @@ async fn serve_page_impl(
         for ext in &["jpg", "jpeg", "png", "webp", "bmp", "gif"] {
             let cached = pages_dir.join(format!("{}.{}", page_idx, ext));
             if cached.exists() {
-                eprintln!("[server] serve_page: disk cache HIT {}", cached.display());
                 let content_type = mime_from_ext(ext);
                 let bytes = tokio::fs::read(&cached)
                     .await
@@ -316,11 +288,6 @@ async fn serve_page_impl(
 
         (library_path, comic.file_path, page.file_name.clone())
     };
-
-    eprintln!(
-        "[server] serve_page: extracting ZIP path='{}' entry='{}'",
-        comic_path, page_file_name
-    );
 
     let scoped = library_cache_dir(&state.cache_root, &library_path);
     let pages_dir = scoped.join("pages").join(comic_id.to_string());
@@ -361,17 +328,55 @@ async fn serve_page_impl(
         .await
         .map_err(|e| format!("IO error: {}", e))?;
 
-    eprintln!(
-        "[server] serve_page: extracted {} bytes to {}",
-        bytes.len(),
-        cached_path.display()
-    );
-
     Ok(Response::builder()
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CACHE_CONTROL, "public, max-age=86400")
         .body(Body::from(bytes))
         .unwrap())
+}
+
+// ── Language Config API ──
+
+#[derive(Deserialize)]
+struct SetLanguageRequest {
+    language: String,
+}
+
+#[derive(Serialize)]
+struct LanguageResponse {
+    language: String,
+}
+
+async fn get_language_api(state: Arc<ShareState>) -> Result<Response, AppError> {
+    let conn = state.db.get()?;
+    let lang = db::get_config(&conn, "language")
+        .map_err(|e| format!("DB error: {}", e))?
+        .unwrap_or_else(|| "zh".to_string());
+    Ok(Json(LanguageResponse { language: lang }).into_response())
+}
+
+async fn set_language_api(
+    state: Arc<ShareState>,
+    req: Request<Body>,
+) -> Result<Response, AppError> {
+    let body_bytes = axum::body::to_bytes(req.into_body(), 1024)
+        .await
+        .map_err(|e| format!("Body read error: {}", e))?;
+    let body: SetLanguageRequest = serde_json::from_slice(&body_bytes)
+        .map_err(|e| format!("JSON parse error: {}", e))?;
+
+    if body.language != "zh" && body.language != "en" {
+        return Err(AppError::Message(format!(
+            "Unsupported language: {}. Supported: zh, en",
+            body.language
+        )));
+    }
+
+    let conn = state.db.get()?;
+    db::set_config(&conn, "language", &body.language)
+        .map_err(|e| format!("DB error: {}", e))?;
+
+    Ok(Json(serde_json::json!({"ok": true})).into_response())
 }
 
 // ── Helpers ──
@@ -427,7 +432,6 @@ impl IntoResponse for AppError {
                     .into_response()
             }
             AppError::Message(msg) => {
-                eprintln!("[server] ERROR 500: {}", msg);
                 let body = serde_json::json!({
                     "error": "Internal Server Error",
                     "detail": msg,

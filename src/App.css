@@ -956,6 +956,45 @@ body,
   font-weight: 500;
 }
 
+/* ── Settings > General ── */
+.settings-general-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-general-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-language-options {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-lang-btn {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-lang-btn:hover {
+  background: var(--bg-hover);
+}
+
+.settings-lang-btn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .settings-cache-actions {
   margin-top: 24px;
   padding-top: 20px;
@@ -1103,12 +1142,34 @@ body,
   font-weight: 600;
   font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
   color: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   padding: 8px 12px;
   background: var(--bg-card);
   border-radius: 6px;
   word-break: break-all;
   user-select: all;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: block;
+  text-align: center;
+}
+
+.share-url:hover {
+  background: var(--bg-hover);
+}
+
+.share-url-copied {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: #4ade80;
+  margin-bottom: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.share-url-copied.visible {
+  opacity: 1;
 }
 
 .share-hint {

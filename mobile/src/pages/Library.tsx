@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import i18n from "../i18n";
 import { fetchComics, coverUrl, type ComicEntry } from "../api";
 
 const CARD_W = 165;
@@ -10,7 +12,9 @@ const GAP = 12;
 const CHROME = 24;
 
 export function Library() {
+  const { t } = useTranslation()
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const parentRef = useRef<HTMLDivElement>(null);
   const [comics, setComics] = useState<ComicEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +27,14 @@ export function Library() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Read language from URL query param (set by desktop share URL)
+  useEffect(() => {
+    const lang = searchParams.get("lang");
+    if (lang && (lang === "zh" || lang === "en") && lang !== i18n.language) {
+      i18n.changeLanguage(lang);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchComics()
@@ -68,7 +80,7 @@ export function Library() {
     return (
       <div className="loading-view">
         <div className="spinner" />
-        <p>加载漫画库…</p>
+        <p>{t('mobile.library.loading')}</p>
       </div>
     );
   }
@@ -77,7 +89,7 @@ export function Library() {
     return (
       <div className="empty-view">
         <div className="empty-icon">⚠️</div>
-        <h2>加载失败</h2>
+        <h2>{t('mobile.library.loadError')}</h2>
         <p>{error}</p>
       </div>
     );
@@ -87,8 +99,8 @@ export function Library() {
     return (
       <div className="empty-view">
         <div className="empty-icon">📚</div>
-        <h2>库为空</h2>
-        <p>请先在电脑端扫描漫画目录</p>
+        <h2>{t('mobile.library.empty')}</h2>
+        <p>{t('mobile.library.emptyHint')}</p>
       </div>
     );
   }
@@ -96,8 +108,8 @@ export function Library() {
   return (
     <div className="library-page">
       <div className="lib-header">
-        <h1>Comic Reader</h1>
-        <span className="lib-count">{comics.length} 本</span>
+        <h1>{t('mobile.library.title')}</h1>
+        <span className="lib-count">{t('mobile.library.count', { count: comics.length })}</span>
       </div>
       <div className="lib-search-bar">
         <svg className="lib-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -107,7 +119,7 @@ export function Library() {
         <input
           className="lib-search-input"
           type="text"
-          placeholder="搜索漫画…"
+          placeholder={t('mobile.library.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -121,8 +133,8 @@ export function Library() {
         {filtered.length === 0 ? (
           <div className="empty-view">
             <div className="empty-icon">🔍</div>
-            <h2>无结果</h2>
-            <p>没有匹配 "{search}" 的漫画</p>
+            <h2>{t('mobile.library.noResults')}</h2>
+            <p>{t('mobile.library.noResultsHint', { search })}</p>
           </div>
         ) : (
           <div

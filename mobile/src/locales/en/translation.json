@@ -1,0 +1,27 @@
+{
+  "mobile": {
+    "library": {
+      "title": "Comic Reader",
+      "count": "{{count}} volumes",
+      "searchPlaceholder": "Search comics…",
+      "loading": "Loading library…",
+      "loadError": "Load Failed",
+      "empty": "Library Empty",
+      "emptyHint": "Please scan the comic directory on desktop first",
+      "noResults": "No Results",
+      "noResultsHint": "No comics matching \"{{search}}\""
+    },
+    "language": {
+      "toggle": "Language: {{lang}}"
+    },
+    "reader": {
+      "back": "← Back",
+      "error": "Error",
+      "loadError": "Load Failed",
+      "loading": "Loading…",
+      "pages": "{{count}} pages",
+      "pageAlt": "Page {{n}}",
+      "pageNum": "{{current}} / {{total}}"
+    }
+  }
+}

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import QRCode from 'qrcode'
+import i18n from '../i18n'
 import type { ScanProgress, ScanResult, ServerInfo } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { SettingsDialog } from './SettingsDialog'
@@ -13,6 +15,7 @@ import { SettingsDialog } from './SettingsDialog'
  * 顶部工具栏 — 目录选择、扫描控制、扫描进度条。
  */
 export function Toolbar() {
+    const { t } = useTranslation()
     const libraryPath = useAppStore((s) => s.libraryPath)
     const setLibraryPath = useAppStore((s) => s.setLibraryPath)
     const setComics = useAppStore((s) => s.setComics)
@@ -38,6 +41,7 @@ export function Toolbar() {
     const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null)
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
     const [shareError, setShareError] = useState<string | null>(null)
+    const [urlCopied, setUrlCopied] = useState(false)
 
     // 监听逐文件扫描进度事件，通过 rAF 节流
     useEffect(() => {
@@ -59,6 +63,14 @@ export function Toolbar() {
         }
     }, [setScanProgress])
 
+    // 监听语言变更事件（来自其他窗口或 set_language 命令）
+    useEffect(() => {
+        const unlisten = listen<string>('language-changed', (event) => {
+            i18n.changeLanguage(event.payload);
+        });
+        return () => { unlisten.then((fn) => fn()); };
+    }, []);
+
     // 扫描结果 3 秒后自动隐藏
     useEffect(() => {
         if (!scanResult) return
@@ -71,7 +83,7 @@ export function Toolbar() {
             const selected = await open({
                 directory: true,
                 multiple: false,
-                title: '选择漫画库目录',
+                title: t('toolbar.pickDirTitle'),
             })
             if (selected && typeof selected === 'string') {
                 setLibraryPath(selected)
@@ -98,8 +110,9 @@ export function Toolbar() {
             const port = 9527
             const info = await invoke<ServerInfo>('start_server', { port })
             setServerInfo(info)
-            // 生成QR码
-            const dataUrl = await QRCode.toDataURL(info.url, {
+            // 生成QR码（附加语言参数）
+            const shareUrl = `${info.url}?lang=${i18n.language}`
+            const dataUrl = await QRCode.toDataURL(shareUrl, {
                 width: 240,
                 margin: 2,
                 color: { dark: '#e0e0e0', light: '#00000000' },
@@ -161,7 +174,7 @@ export function Toolbar() {
     return (
         <div className="toolbar">
             <div className="toolbar-left">
-                <span className="toolbar-title">Comic Reader</span>
+                <span className="toolbar-title">{t('toolbar.title')}</span>
             </div>
 
             {/* 搜索 */}
@@ -184,12 +197,12 @@ export function Toolbar() {
                     <input
                         className="toolbar-search-input"
                         type="text"
-                        placeholder="搜索漫画…"
+                        placeholder={t('toolbar.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     {searchQuery && (
-                        <button className="toolbar-search-clear" onClick={() => setSearchQuery('')} title="清除搜索">
+                        <button className="toolbar-search-clear" onClick={() => setSearchQuery('')} title={t('toolbar.clearSearch')}>
                             ×
                         </button>
                     )}
@@ -203,11 +216,11 @@ export function Toolbar() {
                     </span>
                 )}
                 <button className="toolbar-btn" onClick={handlePickDirectory} disabled={isScanning}>
-                    {libraryPath ? '修改目录' : '选择目录'}
+                    {libraryPath ? t('toolbar.changeDir') : t('toolbar.pickDir')}
                 </button>
                 {libraryPath && (
                     <button className="toolbar-btn toolbar-btn-scan" onClick={handleRescan} disabled={isScanning}>
-                        {isScanning ? '扫描中…' : '扫描'}
+                        {isScanning ? t('toolbar.scanning') : t('toolbar.scan')}
                     </button>
                 )}
                 <button
@@ -221,11 +234,11 @@ export function Toolbar() {
                         }
                     }}
                     disabled={isScanning || shareLoading}
-                    title={serverInfo ? '停止共享' : '局域网共享'}
+                    title={serverInfo ? t('toolbar.stopShare') : t('toolbar.share')}
                 >
-                    {shareLoading ? '启动中…' : serverInfo ? '停止共享' : '📡 共享'}
+                    {shareLoading ? t('toolbar.starting') : serverInfo ? t('toolbar.stopShare') : t('toolbar.share')}
                 </button>
-                <button className="toolbar-btn toolbar-btn-icon" onClick={() => setSettingsOpen(true)} title="设置">
+                <button className="toolbar-btn toolbar-btn-icon" onClick={() => setSettingsOpen(true)} title={t('toolbar.settings')}>
                     <svg
                         width="16"
                         height="16"
@@ -252,12 +265,12 @@ export function Toolbar() {
 
             {scanResult && (
                 <div className={`scan-summary ${scanResult.errors.length > 0 ? 'scan-summary-errors' : ''}`}>
-                    {scanResult.newComics > 0 && <span>+{scanResult.newComics} 新增 </span>}
-                    {scanResult.updatedComics > 0 && <span>↻{scanResult.updatedComics} 更新 </span>}
-                    {scanResult.removedComics > 0 && <span>-{scanResult.removedComics} 移除 </span>}
-                    {scanResult.skippedComics > 0 && <span>✓{scanResult.skippedComics} 未变 </span>}
+                    {scanResult.newComics > 0 && <span>+{scanResult.newComics} {t('scan.newAdded')} </span>}
+                    {scanResult.updatedComics > 0 && <span>↻{scanResult.updatedComics} {t('scan.updated')} </span>}
+                    {scanResult.removedComics > 0 && <span>-{scanResult.removedComics} {t('scan.removed')} </span>}
+                    {scanResult.skippedComics > 0 && <span>✓{scanResult.skippedComics} {t('scan.unchanged')} </span>}
                     {scanResult.errors.length > 0 && (
-                        <span className="scan-errors">⚠ {scanResult.errors.length} 错误</span>
+                        <span className="scan-errors">⚠ {scanResult.errors.length} {t('scan.errors')}</span>
                     )}
                 </div>
             )}
@@ -266,24 +279,37 @@ export function Toolbar() {
             {shareOpen && createPortal(
                 <div className="dialog-overlay" onClick={() => setShareOpen(false)}>
                     <div className="share-dialog" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="share-dialog-title">📡 局域网共享</h3>
+                        <h3 className="share-dialog-title">{t('share.title')}</h3>
 
                         {shareLoading ? (
                             <div className="share-loading">
                                 <div className="reader-loading-spinner" />
-                                <p>正在启动服务器…</p>
+                                <p>{t('share.startingMsg')}</p>
                             </div>
                         ) : shareError ? (
                             <div className="share-error">
-                                <p>⚠️ 启动失败</p>
+                                <p>{t('share.startFailed')}</p>
                                 <p className="share-error-msg">{shareError}</p>
                             </div>
                         ) : serverInfo && qrDataUrl ? (
                             <>
                                 <img src={qrDataUrl} alt="QR Code" className="share-qr" />
-                                <div className="share-url">{serverInfo.url}</div>
+                                <code
+                                    className="share-url"
+                                    onClick={() => {
+                                        const shareUrl = `${serverInfo.url}?lang=${i18n.language}`;
+                                        navigator.clipboard.writeText(shareUrl).then(() => {
+                                            setUrlCopied(true);
+                                            setTimeout(() => setUrlCopied(false), 1500);
+                                        });
+                                    }}
+                                    title={t('share.copyTitle')}
+                                >
+                                    {serverInfo.url}?lang={i18n.language}
+                                </code>
+                                <span className={`share-url-copied ${urlCopied ? 'visible' : ''}`}>{t('share.copied')}</span>
                                 <p className="share-hint">
-                                    手机连接同一 WiFi，扫描二维码或输入地址即可访问。
+                                    {t('share.hint')}
                                 </p>
                             </>
                         ) : null}
@@ -291,11 +317,11 @@ export function Toolbar() {
                         <div className="share-dialog-actions">
                             {serverInfo && !shareLoading && (
                                 <button className="dialog-btn dialog-btn-danger" onClick={handleStopShare}>
-                                    停止共享
+                                    {t('share.stop')}
                                 </button>
                             )}
                             <button className="dialog-btn dialog-btn-cancel" onClick={() => setShareOpen(false)}>
-                                关闭
+                                {t('share.close')}
                             </button>
                         </div>
                     </div>

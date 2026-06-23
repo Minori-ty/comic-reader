@@ -43,3 +43,24 @@ export function coverUrl(comicId: number): string {
 export function pageUrl(comicId: number, pageIdx: number): string {
   return `${BASE}/api/image/page/${comicId}/${pageIdx}`;
 }
+
+// ── Language config ──
+
+export interface LanguageResponse {
+  language: string;
+}
+
+export async function fetchLanguage(): Promise<LanguageResponse> {
+  const res = await fetch(`${BASE}/api/config/language`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function setLanguage(language: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/config/language`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}

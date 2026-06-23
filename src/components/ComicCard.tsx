@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import type { ComicInfo } from '../types'
 
@@ -20,6 +21,7 @@ interface ComicCardProps {
  * the WebP thumbnail from the local filesystem.
  */
 export const ComicCard = memo(function ComicCard({ comic, onClick, onContextMenu, highlightRanges }: ComicCardProps) {
+    const { t } = useTranslation()
     const coverSrc = useMemo(() => {
         if (comic.coverFilePath) {
             return convertFileSrc(comic.coverFilePath)
@@ -91,14 +93,14 @@ export const ComicCard = memo(function ComicCard({ comic, onClick, onContextMenu
                     <img src={coverSrc} alt={comic.fileName} loading="lazy" decoding="async" />
                 ) : (
                     <div className="comic-card-placeholder">
-                        <span>No Cover</span>
+                        <span>{t('comicCard.noCover')}</span>
                     </div>
                 )}
             </div>
             <div className="comic-card-title" title={comic.fileName}>
                 {renderedTitle}
             </div>
-            <div className="comic-card-pages">{comic.pageCount} 页</div>
+            <div className="comic-card-pages">{t('comicCard.pages', { count: comic.pageCount })}</div>
         </div>
     )
 })

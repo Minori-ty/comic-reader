@@ -33,6 +33,40 @@ pub(crate) fn library_cache_dir(cache_root: &Path, library_path: &str) -> PathBu
     cache_root.join(&hash[..16])
 }
 
+/// Get the current UI language from config. Defaults to "zh" if not set.
+#[tauri::command]
+pub async fn get_language(
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
+    let lang = db::get_config(&conn, "language")
+        .map_err(|e| format!("DB error: {}", e))?
+        .unwrap_or_else(|| "zh".to_string());
+    Ok(lang)
+}
+
+/// Set the UI language and emit a `language-changed` event.
+#[tauri::command]
+pub async fn set_language(
+    language: String,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if language != "zh" && language != "en" {
+        return Err(format!("Unsupported language: {}. Supported: zh, en", language));
+    }
+
+    {
+        let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
+        db::set_config(&conn, "language", &language)
+            .map_err(|e| format!("DB error: {}", e))?;
+    }
+
+    let _ = app.emit("language-changed", &language);
+
+    Ok(())
+}
+
 /// Get the current library path from config.
 #[tauri::command]
 pub async fn get_library_path(
