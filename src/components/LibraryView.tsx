@@ -211,11 +211,13 @@ export function LibraryView() {
 
   const loadInitialData = async () => {
     try {
-      const path = await invoke<string | null>("get_library_path");
+      const [path, comics] = await Promise.all([
+        invoke<string | null>("get_library_path"),
+        invoke<ComicInfo[]>("get_comics"),
+      ]);
       if (path) {
         setLibraryPath(path);
       }
-      const comics = await invoke<ComicInfo[]>("get_comics");
       setComics(comics);
       console.log(`Loaded ${comics.length} comics from database`);
     } catch (e) {

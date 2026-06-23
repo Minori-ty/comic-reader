@@ -113,7 +113,7 @@ export function ReaderView() {
                     fetchingRef.current.delete(pageIdx)
                 })
         }
-    }, [visibleRange, pages, pageUrls, currentComicId])
+    }, [visibleRange, pages, currentComicId])
 
     // ── 键盘导航 ──
     const handleKeyDown = useCallback(

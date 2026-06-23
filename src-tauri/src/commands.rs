@@ -79,8 +79,13 @@ pub async fn get_cache_sizes(
     let thumb_dir = scoped.join("thumbnails");
     let pages_dir = scoped.join("pages");
 
-    let (thumb_bytes, thumb_display) = dir_size(&thumb_dir);
-    let (pages_bytes, pages_display) = dir_size(&pages_dir);
+    // 并行计算两个目录大小，避免顺序 stat 延迟叠加
+    let ((thumb_bytes, thumb_display), (pages_bytes, pages_display)) =
+        std::thread::scope(|s| {
+            let thumb = s.spawn(|| dir_size(&thumb_dir));
+            let pages = s.spawn(|| dir_size(&pages_dir));
+            (thumb.join().unwrap(), pages.join().unwrap())
+        });
     let total_bytes = thumb_bytes + pages_bytes;
 
     Ok(CacheSizes {

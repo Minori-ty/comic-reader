@@ -364,29 +364,28 @@ fn process_comic_assets(
     let mut archive =
         zip::read::ZipArchive::new(file).map_err(|e| format!("Bad zip: {}", e))?;
 
-    // Collect image entries sorted by filename (case-insensitive)
-    let mut image_entries: Vec<(String, u64)> = Vec::new();
-    for i in 0..archive.len() {
-        let entry = archive
-            .by_index(i)
-            .map_err(|e| format!("ZIP entry error: {}", e))?;
-        if entry.is_dir() {
-            continue;
-        }
-        let name = entry.name().to_string();
-        let ext = Path::new(&name)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if IMAGE_EXTENSIONS.contains(&ext.as_str()) {
-            image_entries.push((name, entry.size()));
-        }
-    }
-    image_entries.sort_by(|a, b| natural_cmp(&a.0, &b.0));
+    // Collect image file names from the central directory — avoids reading
+    // local file headers for non-image entries and directory markers.
+    let mut image_names: Vec<String> = archive
+        .file_names()
+        .filter(|name| {
+            if name.ends_with('/') {
+                return false;
+            }
+            let ext = Path::new(name)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            IMAGE_EXTENSIONS.contains(&ext.as_str())
+        })
+        .map(String::from)
+        .collect();
+
+    image_names.sort_by(|a, b| natural_cmp(a, b));
 
     // Generate cover thumbnail from the first image
-    let cover_filename = if let Some((first_name, _)) = image_entries.first() {
+    let cover_filename = if let Some(first_name) = image_names.first() {
         let mut entry = archive
             .by_name(first_name)
             .map_err(|e| format!("Entry '{}': {}", first_name, e))?;
@@ -403,12 +402,17 @@ fn process_comic_assets(
         None
     };
 
-    // Build page list
-    let pages: Vec<PageEntry> = image_entries
+    // Build page list — by_name only called for actual image files
+    let pages: Vec<PageEntry> = image_names
         .into_iter()
         .enumerate()
-        .map(|(idx, (name, size))| (idx as i64, name, size as i64))
-        .collect();
+        .map(|(idx, name)| -> Result<PageEntry, String> {
+            let entry = archive
+                .by_name(&name)
+                .map_err(|e| format!("Entry '{}': {}", name, e))?;
+            Ok((idx as i64, name, entry.size() as i64))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
 
     Ok((pages, cover_filename))
 }
