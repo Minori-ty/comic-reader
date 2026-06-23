@@ -5,10 +5,10 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build:mobile": "cd mobile && pnpm build",
-        "build": "pnpm build:mobile && tsc && vite build",
+        "build:web": "cd web && pnpm build",
+        "build": "pnpm build:web && tsc && vite build",
         "preview": "vite preview",
-        "tauri": "pnpm build:mobile && tauri"
+        "tauri": "pnpm build:web && tauri"
     },
     "dependencies": {
         "@tanstack/react-query": "^5.101.0",

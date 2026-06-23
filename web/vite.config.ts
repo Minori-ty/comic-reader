@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   base: "/",
   build: {
-    outDir: "../src-tauri/mobile-dist",
+    outDir: "../src-tauri/web-dist",
     emptyOutDir: true,
   },
 });

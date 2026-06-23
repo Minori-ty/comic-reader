@@ -80,7 +80,7 @@ export function Library() {
     return (
       <div className="loading-view">
         <div className="spinner" />
-        <p>{t('mobile.library.loading')}</p>
+        <p>{t('web.library.loading')}</p>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function Library() {
     return (
       <div className="empty-view">
         <div className="empty-icon">⚠️</div>
-        <h2>{t('mobile.library.loadError')}</h2>
+        <h2>{t('web.library.loadError')}</h2>
         <p>{error}</p>
       </div>
     );
@@ -99,8 +99,8 @@ export function Library() {
     return (
       <div className="empty-view">
         <div className="empty-icon">📚</div>
-        <h2>{t('mobile.library.empty')}</h2>
-        <p>{t('mobile.library.emptyHint')}</p>
+        <h2>{t('web.library.empty')}</h2>
+        <p>{t('web.library.emptyHint')}</p>
       </div>
     );
   }
@@ -108,8 +108,8 @@ export function Library() {
   return (
     <div className="library-page">
       <div className="lib-header">
-        <h1>{t('mobile.library.title')}</h1>
-        <span className="lib-count">{t('mobile.library.count', { count: comics.length })}</span>
+        <h1>{t('web.library.title')}</h1>
+        <span className="lib-count">{t('web.library.count', { count: comics.length })}</span>
       </div>
       <div className="lib-search-bar">
         <svg className="lib-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,7 +119,7 @@ export function Library() {
         <input
           className="lib-search-input"
           type="text"
-          placeholder={t('mobile.library.searchPlaceholder')}
+          placeholder={t('web.library.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -133,8 +133,8 @@ export function Library() {
         {filtered.length === 0 ? (
           <div className="empty-view">
             <div className="empty-icon">🔍</div>
-            <h2>{t('mobile.library.noResults')}</h2>
-            <p>{t('mobile.library.noResultsHint', { search })}</p>
+            <h2>{t('web.library.noResults')}</h2>
+            <p>{t('web.library.noResultsHint', { search })}</p>
           </div>
         ) : (
           <div

@@ -52,8 +52,8 @@ pub async fn run(
     let state = Arc::new(ShareState { db, cache_root });
 
     // React build output directory (relative to src-tauri/Cargo.toml)
-    let mobile_dist =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("mobile-dist");
+    let web_dist =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("web-dist");
 
     // ── API router: all /api/* requests are handled by the dispatcher ──
     let api_router = Router::new()
@@ -65,10 +65,10 @@ pub async fn run(
         // API routes take priority
         .nest("/api", api_router)
         // Static assets from the React build
-        .nest_service("/assets", ServeDir::new(mobile_dist.join("assets")))
+        .nest_service("/assets", ServeDir::new(web_dist.join("assets")))
         // favicon / other root-level files
         .route("/vite.svg", get({
-            let dist = mobile_dist.clone();
+            let dist = web_dist.clone();
             move || async move {
                 let path = dist.join("vite.svg");
                 match tokio::fs::read(&path).await {
@@ -81,7 +81,7 @@ pub async fn run(
             }
         }))
         // SPA fallback: everything else → index.html
-        .fallback_service(ServeFile::new(mobile_dist.join("index.html")));
+        .fallback_service(ServeFile::new(web_dist.join("index.html")));
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr)

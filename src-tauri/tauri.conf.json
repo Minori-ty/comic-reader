@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.tauri-app.comic-dev",
   "build": {
-    "beforeDevCommand": "pnpm build:mobile && pnpm dev",
+    "beforeDevCommand": "pnpm build:web && pnpm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
