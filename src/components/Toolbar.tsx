@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import type { ScanProgress, ScanResult } from '../types'
+import QRCode from 'qrcode'
+import type { ScanProgress, ScanResult, ServerInfo } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { SettingsDialog } from './SettingsDialog'
 
@@ -19,13 +22,22 @@ export function Toolbar() {
     const setIsScanning = useAppStore((s) => s.setIsScanning)
     const isScanning = useAppStore((s) => s.isScanning)
     const scanResult = useAppStore((s) => s.scanResult)
-    const currentView = useAppStore((s) => s.currentView)
+
+    const location = useLocation()
+    const isLibrary = location.pathname === '/'
 
     const searchQuery = useAppStore((s) => s.searchQuery)
     const setSearchQuery = useAppStore((s) => s.setSearchQuery)
 
     const scanInProgress = useRef(false)
     const [settingsOpen, setSettingsOpen] = useState(false)
+
+    // ── LAN 共享状态 ──
+    const [shareOpen, setShareOpen] = useState(false)
+    const [shareLoading, setShareLoading] = useState(false)
+    const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null)
+    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+    const [shareError, setShareError] = useState<string | null>(null)
 
     // 监听逐文件扫描进度事件，通过 rAF 节流
     useEffect(() => {
@@ -76,6 +88,41 @@ export function Toolbar() {
         }
     }, [libraryPath])
 
+    // ── LAN 共享 ──
+    const handleStartShare = useCallback(async () => {
+        setShareLoading(true)
+        setShareError(null)
+        setServerInfo(null)
+        setQrDataUrl(null)
+        try {
+            const port = 9527
+            const info = await invoke<ServerInfo>('start_server', { port })
+            setServerInfo(info)
+            // 生成QR码
+            const dataUrl = await QRCode.toDataURL(info.url, {
+                width: 240,
+                margin: 2,
+                color: { dark: '#e0e0e0', light: '#00000000' },
+            })
+            setQrDataUrl(dataUrl)
+        } catch (e) {
+            setShareError(String(e))
+        } finally {
+            setShareLoading(false)
+        }
+    }, [])
+
+    const handleStopShare = useCallback(async () => {
+        try {
+            await invoke('stop_server')
+        } catch (e) {
+            console.error('stop_server:', e)
+        }
+        setServerInfo(null)
+        setQrDataUrl(null)
+        setShareOpen(false)
+    }, [])
+
     const doScan = async ({ isNewPath, path }: { isNewPath: boolean; path: string }) => {
         if (scanInProgress.current) return
         scanInProgress.current = true
@@ -118,7 +165,7 @@ export function Toolbar() {
             </div>
 
             {/* 搜索 */}
-            {currentView === 'library' && libraryPath && (
+            {isLibrary && libraryPath && (
                 <div className="toolbar-search">
                     <svg
                         className="toolbar-search-icon"
@@ -163,6 +210,21 @@ export function Toolbar() {
                         {isScanning ? '扫描中…' : '扫描'}
                     </button>
                 )}
+                <button
+                    className="toolbar-btn"
+                    onClick={() => {
+                        if (serverInfo) {
+                            handleStopShare();
+                        } else {
+                            setShareOpen(true);
+                            handleStartShare();
+                        }
+                    }}
+                    disabled={isScanning || shareLoading}
+                    title={serverInfo ? '停止共享' : '局域网共享'}
+                >
+                    {shareLoading ? '启动中…' : serverInfo ? '停止共享' : '📡 共享'}
+                </button>
                 <button className="toolbar-btn toolbar-btn-icon" onClick={() => setSettingsOpen(true)} title="设置">
                     <svg
                         width="16"
@@ -198,6 +260,47 @@ export function Toolbar() {
                         <span className="scan-errors">⚠ {scanResult.errors.length} 错误</span>
                     )}
                 </div>
+            )}
+
+            {/* ── LAN 共享弹窗 ── */}
+            {shareOpen && createPortal(
+                <div className="dialog-overlay" onClick={() => setShareOpen(false)}>
+                    <div className="share-dialog" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="share-dialog-title">📡 局域网共享</h3>
+
+                        {shareLoading ? (
+                            <div className="share-loading">
+                                <div className="reader-loading-spinner" />
+                                <p>正在启动服务器…</p>
+                            </div>
+                        ) : shareError ? (
+                            <div className="share-error">
+                                <p>⚠️ 启动失败</p>
+                                <p className="share-error-msg">{shareError}</p>
+                            </div>
+                        ) : serverInfo && qrDataUrl ? (
+                            <>
+                                <img src={qrDataUrl} alt="QR Code" className="share-qr" />
+                                <div className="share-url">{serverInfo.url}</div>
+                                <p className="share-hint">
+                                    手机连接同一 WiFi，扫描二维码或输入地址即可访问。
+                                </p>
+                            </>
+                        ) : null}
+
+                        <div className="share-dialog-actions">
+                            {serverInfo && !shareLoading && (
+                                <button className="dialog-btn dialog-btn-danger" onClick={handleStopShare}>
+                                    停止共享
+                                </button>
+                            )}
+                            <button className="dialog-btn dialog-btn-cancel" onClick={() => setShareOpen(false)}>
+                                关闭
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body,
             )}
 
             {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}

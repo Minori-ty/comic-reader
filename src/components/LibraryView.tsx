@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -8,9 +9,11 @@ import { useAppStore } from "../store/useAppStore";
 import { ComicCard } from "./ComicCard";
 import type { HighlightRange } from "./ComicCard";
 
-const CARD_WIDTH = 200;
-const CARD_HEIGHT = 300;
-const CARD_GAP = 16;
+const CARD_W = 180;
+const CARD_H = 300;
+const GAP = 16;
+/** 窗口宽度转为可用内容宽度的扣除量（滚动条 ~8px + library-view padding 32px） */
+const CHROME = 40;
 
 interface ContextMenuState {
   visible: boolean;
@@ -29,25 +32,31 @@ interface DeleteDialogState {
 }
 
 /**
- * 漫画库视图 — 使用虚拟滚动的封面网格布局。
+ * 漫画库视图 — CSS Grid 自适应列数 + 虚拟滚动行。
  *
  * 右键菜单和删除确认弹窗作为单例管理，
  * 通过 createPortal 渲染到 `document.body`，
  * 避免虚拟列表的 `transform` 容器影响 `position: fixed` 定位。
  */
 export function LibraryView() {
+  const navigate = useNavigate();
   const comics = useAppStore((s) => s.comics);
   const setComics = useAppStore((s) => s.setComics);
   const batchUpsertComics = useAppStore((s) => s.batchUpsertComics);
   const setLibraryPath = useAppStore((s) => s.setLibraryPath);
-  const openReader = useAppStore((s) => s.openReader);
-  const goToLibrary = useAppStore((s) => s.goToLibrary);
   const libraryPath = useAppStore((s) => s.libraryPath);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const isScanning = useAppStore((s) => s.isScanning);
 
   const parentRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
+
+  // 用 window.innerWidth 计算可用内容宽度（同步、可靠）
+  const [vw, setVw] = useState(window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // ── 子串搜索 ──
   const { filteredComics, matchMap } = useMemo(() => {
@@ -127,7 +136,7 @@ export function LibraryView() {
   // 监听缓存清除事件 — 刷新列表并返回库视图
   useEffect(() => {
     const unlisten = listen("cache-cleared", async () => {
-      goToLibrary();
+      navigate("/");
       try {
         const fresh = await invoke<ComicInfo[]>("get_comics");
         setComics(fresh);
@@ -138,7 +147,7 @@ export function LibraryView() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [setComics, goToLibrary]);
+  }, [setComics, navigate]);
 
   // 监听扫描完成事件 — 全量刷新以捕获已移除的文件
   useEffect(() => {
@@ -156,24 +165,11 @@ export function LibraryView() {
     };
   }, [setComics]);
 
-  // 跟踪容器宽度，用于计算网格列数
-  useEffect(() => {
-    const el = parentRef.current;
-    if (!el) return;
-    setContainerWidth(el.clientWidth);
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // 忽略容器隐藏时（display:none）的 0 宽度报告
-        if (entry.contentRect.width > 0) {
-          setContainerWidth(entry.contentRect.width);
-        }
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // ── 右键菜单：点击外部或按 Escape 关闭 ──
+  // 自适应列数
+  const columns = useMemo(() => {
+    const avail = vw - CHROME;
+    return Math.max(1, Math.floor((avail + GAP) / (CARD_W + GAP)));
+  }, [vw]);
   useEffect(() => {
     if (!contextMenu.visible) return;
 
@@ -227,9 +223,9 @@ export function LibraryView() {
 
   const handleComicClick = useCallback(
     (comicId: number) => {
-      openReader(comicId);
+      navigate(`/reader/${comicId}`);
     },
-    [openReader],
+    [navigate],
   );
 
   const handleContextMenu = useCallback(
@@ -282,19 +278,12 @@ export function LibraryView() {
     setDeleteDialog((s) => ({ ...s, visible: false }));
   }, []);
 
-  // 计算网格布局
-  const columns = useMemo(() => {
-    const w = containerWidth || 800;
-    if (w < CARD_WIDTH) return 1;
-    return Math.max(1, Math.floor((w + CARD_GAP) / (CARD_WIDTH + CARD_GAP)));
-  }, [containerWidth]);
-
   const rowCount = Math.ceil(filteredComics.length / columns);
 
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => CARD_HEIGHT + CARD_GAP,
+    estimateSize: () => CARD_H + GAP,
     overscan: 3,
   });
 
@@ -330,7 +319,6 @@ export function LibraryView() {
         </div>
       ) : (
         <div
-          className="library-grid-container"
           style={{
             height: `${virtualizer.getTotalSize()}px`,
             width: "100%",
@@ -340,7 +328,6 @@ export function LibraryView() {
           {virtualizer.getVirtualItems().map((virtualRow) => (
             <div
               key={virtualRow.key}
-              className="library-row"
               style={{
                 position: "absolute",
                 top: 0,
@@ -348,34 +335,27 @@ export function LibraryView() {
                 width: "100%",
                 height: `${virtualRow.size}px`,
                 transform: `translateY(${virtualRow.start}px)`,
-                display: "flex",
-                gap: `${CARD_GAP}px`,
+                display: "grid",
+                gridTemplateColumns: `repeat(${columns}, ${CARD_W}px)`,
+                gap: `${GAP}px`,
                 justifyContent: "center",
+                padding: "0 0 16px 0",
               }}
             >
               {Array.from({ length: columns }).map((_, colIdx) => {
                 const comicIdx = virtualRow.index * columns + colIdx;
                 if (comicIdx >= filteredComics.length) {
-                  return (
-                    <div
-                      key={`empty-${colIdx}`}
-                      style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
-                    />
-                  );
+                  return <div key={`empty-${colIdx}`} />;
                 }
                 const comic = filteredComics[comicIdx];
                 return (
-                  <div
+                  <ComicCard
                     key={comic.id}
-                    style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
-                  >
-                    <ComicCard
-                      comic={comic}
-                      onClick={handleComicClick}
-                      onContextMenu={handleContextMenu}
-                      highlightRanges={matchMap?.get(comic.id)}
-                    />
-                  </div>
+                    comic={comic}
+                    onClick={handleComicClick}
+                    onContextMenu={handleContextMenu}
+                    highlightRanges={matchMap?.get(comic.id)}
+                  />
                 );
               })}
             </div>

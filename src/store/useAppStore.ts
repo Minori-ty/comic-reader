@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, ComicInfo, ScanProgress, ScanResult } from "../types";
+import type { ComicInfo, ScanProgress, ScanResult } from "../types";
 
 interface AppState {
   // Library
@@ -9,10 +9,6 @@ interface AppState {
   scanProgress: ScanProgress | null;
   isScanning: boolean;
   searchQuery: string;
-
-  // Reader
-  currentView: AppView;
-  currentComicId: number | null;
 
   // Actions
   setLibraryPath: (path: string | null) => void;
@@ -25,8 +21,6 @@ interface AppState {
   setScanProgress: (progress: ScanProgress | null) => void;
   setIsScanning: (scanning: boolean) => void;
   setSearchQuery: (query: string) => void;
-  openReader: (comicId: number) => void;
-  goToLibrary: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -36,8 +30,6 @@ export const useAppStore = create<AppState>((set) => ({
   scanProgress: null,
   isScanning: false,
   searchQuery: "",
-  currentView: "library",
-  currentComicId: null,
 
   setLibraryPath: (path) => set({ libraryPath: path }),
   setComics: (comics) => set({ comics }),
@@ -87,8 +79,4 @@ export const useAppStore = create<AppState>((set) => ({
   setScanProgress: (progress) => set({ scanProgress: progress }),
   setIsScanning: (scanning) => set({ isScanning: scanning }),
   setSearchQuery: (query) => set({ searchQuery: query }),
-  openReader: (comicId) =>
-    set({ currentView: "reader", currentComicId: comicId }),
-  goToLibrary: () =>
-    set({ currentView: "library", currentComicId: null }),
 }));

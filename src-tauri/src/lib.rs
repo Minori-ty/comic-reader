@@ -2,12 +2,14 @@ mod commands;
 mod db;
 mod models;
 mod scanner;
+mod server;
 mod thumbnail;
 
 use commands::{AppState, DbPool};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::Manager;
 
 /// Get the app data directory based on OS conventions.
@@ -71,6 +73,9 @@ pub fn run() {
             app.manage(AppState {
                 db: pool,
                 cache_root,
+                server_shutdown: Mutex::new(None),
+                server_port: Mutex::new(0),
+                local_ip: Mutex::new(String::new()),
             });
 
             Ok(())
@@ -91,6 +96,9 @@ pub fn run() {
             commands::clear_current_cache,
             commands::clear_all_cache,
             commands::get_cache_sizes,
+            commands::start_server,
+            commands::stop_server,
+            commands::get_server_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

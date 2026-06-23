@@ -78,3 +78,12 @@ pub struct CacheSizes {
     pub total_size: String,
     pub total_bytes: u64,
 }
+
+/// Info about the running HTTP server for LAN sharing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerInfo {
+    pub url: String,
+    pub ip: String,
+    pub port: u16,
+}

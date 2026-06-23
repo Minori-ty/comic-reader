@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::db;
@@ -16,11 +17,17 @@ pub struct AppState {
     /// Root cache directory: `{app_data}/cache/`.
     /// Scoped per-library subdirectories are created inside this.
     pub cache_root: PathBuf,
+    /// Shutdown signal for the HTTP server (Some = running, None = stopped).
+    pub server_shutdown: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    /// Port the server is listening on (valid only when running).
+    pub server_port: Mutex<u16>,
+    /// LAN IP address detected at server start time.
+    pub local_ip: Mutex<String>,
 }
 
 /// Compute a library-scoped cache directory from the library path.
 /// Uses a blake3 hash so the directory name is filesystem-safe and stable.
-fn library_cache_dir(cache_root: &Path, library_path: &str) -> PathBuf {
+pub(crate) fn library_cache_dir(cache_root: &Path, library_path: &str) -> PathBuf {
     let hash = blake3::hash(library_path.as_bytes()).to_hex();
     // First 16 hex chars (64 bits) are more than enough to avoid collisions
     cache_root.join(&hash[..16])
@@ -547,4 +554,85 @@ fn format_bytes(bytes: u64) -> String {
     } else {
         format!("{:.2} {}", size, UNITS[unit_idx])
     }
+}
+
+// ── LAN Sharing Server Commands ─────────────────────────────────────────
+
+use crate::models::ServerInfo;
+use crate::server;
+
+/// Start the HTTP server for LAN sharing.
+#[tauri::command]
+pub async fn start_server(
+    port: u16,
+    state: State<'_, AppState>,
+) -> Result<ServerInfo, String> {
+    let mut shutdown_guard = state.server_shutdown.lock().unwrap();
+    if shutdown_guard.is_some() {
+        return Err("服务器已在运行中".to_string());
+    }
+
+    // Detect LAN IP
+    let ip = local_ip_address::local_ip()
+        .map(|addr| addr.to_string())
+        .unwrap_or_else(|_| "127.0.0.1".to_string());
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let db = state.db.clone();
+    let cache_root = state.cache_root.clone();
+
+    // Spawn the server in a background task
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = server::run(db, cache_root, port, rx).await {
+            eprintln!("HTTP server error: {}", e);
+        }
+    });
+
+    *shutdown_guard = Some(tx);
+    *state.server_port.lock().unwrap() = port;
+    *state.local_ip.lock().unwrap() = ip.clone();
+
+    Ok(ServerInfo {
+        url: format!("http://{}:{}", ip, port),
+        ip,
+        port,
+    })
+}
+
+/// Stop the HTTP server.
+#[tauri::command]
+pub async fn stop_server(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let sender = state
+        .server_shutdown
+        .lock()
+        .unwrap()
+        .take()
+        .ok_or_else(|| "服务器未在运行".to_string())?;
+
+    // Send shutdown signal
+    let _ = sender.send(());
+    *state.server_port.lock().unwrap() = 0;
+    *state.local_ip.lock().unwrap() = String::new();
+
+    Ok(())
+}
+
+/// Get current server status. Returns `None` if not running.
+#[tauri::command]
+pub async fn get_server_status(
+    state: State<'_, AppState>,
+) -> Result<Option<ServerInfo>, String> {
+    let running = state.server_shutdown.lock().unwrap().is_some();
+    if !running {
+        return Ok(None);
+    }
+    let port = *state.server_port.lock().unwrap();
+    let ip = state.local_ip.lock().unwrap().clone();
+    Ok(Some(ServerInfo {
+        url: format!("http://{}:{}", ip, port),
+        ip,
+        port,
+    }))
 }

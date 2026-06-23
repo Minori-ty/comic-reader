@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { PageInfo } from '../types'
@@ -23,8 +24,9 @@ function estimatedPageHeight() {
  * 解压全部 200+ 页。
  */
 export function ReaderView() {
-    const currentComicId = useAppStore((s) => s.currentComicId)
-    const goToLibrary = useAppStore((s) => s.goToLibrary)
+    const { comicId } = useParams<{ comicId: string }>();
+    const navigate = useNavigate();
+    const currentComicId = comicId ? Number(comicId) : null;
     const comics = useAppStore((s) => s.comics)
 
     const [pages, setPages] = useState<PageInfo[]>([])
@@ -148,11 +150,11 @@ export function ReaderView() {
                     break
                 case 'Escape':
                     e.preventDefault()
-                    goToLibrary()
+                    navigate('/')
                     break
             }
         },
-        [goToLibrary],
+        [navigate],
     )
 
     useEffect(() => {
@@ -176,7 +178,7 @@ export function ReaderView() {
             <div className="reader-error">
                 <h2>加载漫画失败</h2>
                 <p>{error}</p>
-                <button onClick={goToLibrary}>返回库</button>
+                <button onClick={() => navigate('/')}>返回库</button>
             </div>
         )
     }
@@ -184,7 +186,7 @@ export function ReaderView() {
     return (
         <div className="reader-view">
             <div className="reader-header">
-                <button className="reader-back-btn" onClick={goToLibrary}>
+                <button className="reader-back-btn" onClick={() => navigate('/')}>
                     返回
                 </button>
                 <span className="reader-title">{comic?.fileName ?? '阅读中'}</span>

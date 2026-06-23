@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.tauri-app.comic-dev",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm build:mobile && pnpm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "comic-dev",
-        "width": 800,
-        "height": 600
+        "width": 1000,
+        "height": 700
       }
     ],
     "security": {

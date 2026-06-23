@@ -63,5 +63,9 @@ export interface CacheSizes {
   totalBytes: number;
 }
 
-/** App view state */
-export type AppView = "library" | "reader";
+/** Matches Rust ServerInfo */
+export interface ServerInfo {
+  url: string;
+  ip: string;
+  port: number;
+}
