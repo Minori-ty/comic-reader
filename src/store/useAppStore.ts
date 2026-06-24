@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ComicInfo, ScanProgress, ScanResult } from "../types";
+import type { ComicInfo, ScanProgress, ScanResult, ServerInfo } from "../types";
 
 interface AppState {
   // Library
@@ -13,6 +13,18 @@ interface AppState {
   // Language
   language: string;
   setLanguage: (lang: string) => void;
+
+  // LAN Share
+  serverInfo: ServerInfo | null;
+  qrDataUrl: string | null;
+  shareOpen: boolean;
+  shareLoading: boolean;
+  shareError: string | null;
+  setServerInfo: (info: ServerInfo | null) => void;
+  setQrDataUrl: (url: string | null) => void;
+  setShareOpen: (open: boolean) => void;
+  setShareLoading: (loading: boolean) => void;
+  setShareError: (error: string | null) => void;
 
   // Actions
   setLibraryPath: (path: string | null) => void;
@@ -35,6 +47,18 @@ export const useAppStore = create<AppState>((set) => ({
   isScanning: false,
   searchQuery: "",
   language: "zh",
+
+  // LAN Share
+  serverInfo: null,
+  qrDataUrl: null,
+  shareOpen: false,
+  shareLoading: false,
+  shareError: null,
+  setServerInfo: (info) => set({ serverInfo: info }),
+  setQrDataUrl: (url) => set({ qrDataUrl: url }),
+  setShareOpen: (open) => set({ shareOpen: open }),
+  setShareLoading: (loading) => set({ shareLoading: loading }),
+  setShareError: (error) => set({ shareError: error }),
 
   setLanguage: (language) => set({ language }),
 

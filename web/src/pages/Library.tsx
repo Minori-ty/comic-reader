@@ -11,6 +11,9 @@ const GAP = 12;
 /** 窗口宽度转为可用内容宽度的扣除量（滚动条 ~4px + lib-scroll padding 20px） */
 const CHROME = 24;
 
+/** 组件卸载后缓存滚动位置 */
+let cachedScrollTop = 0;
+
 export function Library() {
   const { t } = useTranslation()
   const navigate = useNavigate();
@@ -67,10 +70,12 @@ export function Library() {
     getScrollElement: () => parentRef.current,
     estimateSize: () => CARD_H + GAP,
     overscan: 2,
+    initialOffset: cachedScrollTop,
   });
 
   const openReader = useCallback(
     (comic: ComicEntry) => {
+      cachedScrollTop = parentRef.current?.scrollTop ?? 0;
       navigate(`/reader/${comic.id}`, { state: { title: comic.fileName } });
     },
     [navigate],

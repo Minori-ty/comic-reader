@@ -35,12 +35,17 @@ export function Toolbar() {
     const scanInProgress = useRef(false)
     const [settingsOpen, setSettingsOpen] = useState(false)
 
-    // ── LAN 共享状态 ──
-    const [shareOpen, setShareOpen] = useState(false)
-    const [shareLoading, setShareLoading] = useState(false)
-    const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null)
-    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-    const [shareError, setShareError] = useState<string | null>(null)
+    // ── LAN 共享状态（来自 Zustand，跨路由保持） ──
+    const serverInfo = useAppStore((s) => s.serverInfo)
+    const qrDataUrl = useAppStore((s) => s.qrDataUrl)
+    const shareOpen = useAppStore((s) => s.shareOpen)
+    const shareLoading = useAppStore((s) => s.shareLoading)
+    const shareError = useAppStore((s) => s.shareError)
+    const setServerInfo = useAppStore((s) => s.setServerInfo)
+    const setQrDataUrl = useAppStore((s) => s.setQrDataUrl)
+    const setShareOpen = useAppStore((s) => s.setShareOpen)
+    const setShareLoading = useAppStore((s) => s.setShareLoading)
+    const setShareError = useAppStore((s) => s.setShareError)
     const [urlCopied, setUrlCopied] = useState(false)
 
     // 监听逐文件扫描进度事件，通过 rAF 节流
@@ -123,7 +128,7 @@ export function Toolbar() {
         } finally {
             setShareLoading(false)
         }
-    }, [])
+    }, [setServerInfo, setQrDataUrl, setShareLoading, setShareError])
 
     const handleStopShare = useCallback(async () => {
         try {
@@ -134,7 +139,7 @@ export function Toolbar() {
         setServerInfo(null)
         setQrDataUrl(null)
         setShareOpen(false)
-    }, [])
+    }, [setServerInfo, setQrDataUrl, setShareOpen])
 
     const doScan = async ({ isNewPath, path }: { isNewPath: boolean; path: string }) => {
         if (scanInProgress.current) return
