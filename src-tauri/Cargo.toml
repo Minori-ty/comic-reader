@@ -20,11 +20,11 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.39", features = ["bundled"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.31"
+r2d2_sqlite = "0.34"
 rayon = "1.10"
-zip = "2.2"
+zip = "8.6.0"
 image = { version = "0.25", features = ["webp"] }
 webp = "0.3"
 blake3 = "1.5"
@@ -32,7 +32,8 @@ walkdir = "2.5"
 chrono = { version = "0.4", features = ["serde"] }
 
 mime_guess = "2"
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1", features = ["sync", "net", "rt-multi-thread"] }
 local-ip-address = "0.6"
-tower-http = { version = "0.5", features = ["cors", "fs"] }
+sys-locale = "0.3"
+tower-http = { version = "0.7.0", features = ["cors", "fs"] }
