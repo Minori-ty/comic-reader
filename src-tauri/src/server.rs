@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::body::Body;
-use axum::extract::State;
-use axum::http::{header, Request, StatusCode};
-use axum::response::{IntoResponse, Json, Response};
+use axum::extract::{Path, State};
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::Router;
+use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -41,6 +41,14 @@ struct PageEntry {
     file_name: String,
 }
 
+// ── Path params for multi-segment routes ──
+
+#[derive(Deserialize)]
+struct PagePath {
+    comic_id: i64,
+    page_idx: i64,
+}
+
 // ── Public entry point ──
 
 pub async fn run(
@@ -55,15 +63,14 @@ pub async fn run(
     let web_dist =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("web-dist");
 
-    // ── API router: all /api/* requests are handled by the dispatcher ──
-    let api_router = Router::new()
-        .fallback(api_dispatcher)
-        .with_state(state);
-
     // ── Main router ──
     let app = Router::new()
-        // API routes take priority
-        .nest("/api", api_router)
+        // API — explicit routes with typed extractors
+        .route("/api/comics", get(list_comics))
+        .route("/api/comics/{id}/pages", get(list_pages))
+        .route("/api/image/cover/{comic_id}", get(serve_cover))
+        .route("/api/image/page/{comic_id}/{page_idx}", get(serve_page))
+        .route("/api/config/language", get(get_language).post(set_language))
         // Static assets from the React build
         .nest_service("/assets", ServeDir::new(web_dist.join("assets")))
         // favicon / other root-level files
@@ -81,7 +88,8 @@ pub async fn run(
             }
         }))
         // SPA fallback: everything else → index.html
-        .fallback_service(ServeFile::new(web_dist.join("index.html")));
+        .fallback_service(ServeFile::new(web_dist.join("index.html")))
+        .with_state(state);
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr)
@@ -98,41 +106,11 @@ pub async fn run(
     Ok(())
 }
 
-// ── API Dispatcher ──
-
-/// 通配路由：手动解析路径并分发到对应的处理逻辑。
-async fn api_dispatcher(
-    State(state): State<Arc<ShareState>>,
-    req: Request<Body>,
-) -> Result<Response, AppError> {
-    let full_path = req.uri().path().to_string();
-    let path = full_path
-        .strip_prefix("/api/")
-        .unwrap_or_else(|| full_path.strip_prefix("/api").unwrap_or(&full_path));
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-
-    match segments.as_slice() {
-        ["comics"] => list_comics_impl(state).await,
-        ["comics", id, "pages"] => list_pages_impl(state, id).await,
-        ["image", "cover", comic_id] => serve_cover_impl(state, comic_id).await,
-        ["image", "page", comic_id, page_idx] => serve_page_impl(state, comic_id, page_idx).await,
-        ["config", "language"] => match req.method().as_str() {
-            "GET" => get_language_api(state).await,
-            "POST" => set_language_api(state, req).await,
-            _ => Err(AppError::NotFoundWithDetail("Method not allowed".to_string())),
-        },
-        _ => {
-            Err(AppError::NotFoundWithDetail(format!(
-                "Unknown API path: /api/{}",
-                path
-            )))
-        }
-    }
-}
-
 // ── Handler Implementations ──
 
-async fn list_comics_impl(state: Arc<ShareState>) -> Result<Response, AppError> {
+async fn list_comics(
+    State(state): State<Arc<ShareState>>,
+) -> Result<Response, AppError> {
     let (library_path, comics) = {
         let conn = state.db.get()?;
         let path = db::get_config(&conn, "library_path")
@@ -142,7 +120,7 @@ async fn list_comics_impl(state: Arc<ShareState>) -> Result<Response, AppError> 
         (path, comics)
     };
 
-    let scoped = library_cache_dir(&state.cache_root, &library_path);
+    let scoped = crate::commands::library_cache_dir(&state.cache_root, &library_path);
 
     let entries: Vec<ComicEntry> = comics
         .into_iter()
@@ -166,16 +144,12 @@ async fn list_comics_impl(state: Arc<ShareState>) -> Result<Response, AppError> 
     Ok(Json(entries).into_response())
 }
 
-async fn list_pages_impl(
-    state: Arc<ShareState>,
-    id_str: &str,
+async fn list_pages(
+    State(state): State<Arc<ShareState>>,
+    Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
-    let comic_id: i64 = id_str
-        .parse()
-        .map_err(|_| AppError::NotFoundWithDetail(format!("Invalid comic id: {}", id_str)))?;
-
     let conn = state.db.get()?;
-    let pages = db::get_pages(&conn, comic_id)
+    let pages = db::get_pages(&conn, id)
         .map_err(|e| format!("DB error: {}", e))?;
 
     let entries: Vec<PageEntry> = pages
@@ -189,14 +163,10 @@ async fn list_pages_impl(
     Ok(Json(entries).into_response())
 }
 
-async fn serve_cover_impl(
-    state: Arc<ShareState>,
-    comic_id_str: &str,
+async fn serve_cover(
+    State(state): State<Arc<ShareState>>,
+    Path(comic_id): Path<i64>,
 ) -> Result<Response, AppError> {
-    let comic_id: i64 = comic_id_str
-        .parse()
-        .map_err(|_| AppError::NotFoundWithDetail(format!("Invalid comic id: {}", comic_id_str)))?;
-
     let library_path = {
         let conn = state.db.get()?;
         db::get_config(&conn, "library_path")
@@ -210,7 +180,7 @@ async fn serve_cover_impl(
         ));
     }
 
-    let scoped = library_cache_dir(&state.cache_root, &library_path);
+    let scoped = crate::commands::library_cache_dir(&state.cache_root, &library_path);
     let thumb_dir = scoped.join("thumbnails");
     let thumb_path = thumb_dir.join(format!("{}.webp", comic_id));
 
@@ -231,18 +201,12 @@ async fn serve_cover_impl(
     }
 }
 
-async fn serve_page_impl(
-    state: Arc<ShareState>,
-    comic_id_str: &str,
-    page_idx_str: &str,
+async fn serve_page(
+    State(state): State<Arc<ShareState>>,
+    Path(p): Path<PagePath>,
 ) -> Result<Response, AppError> {
-    let comic_id: i64 = comic_id_str
-        .parse()
-        .map_err(|_| AppError::NotFoundWithDetail(format!("Invalid comic id: {}", comic_id_str)))?;
-    let page_idx: i64 = page_idx_str
-        .parse()
-        .map_err(|_| AppError::NotFoundWithDetail(format!("Invalid page idx: {}", page_idx_str)))?;
-
+    let comic_id = p.comic_id;
+    let page_idx = p.page_idx;
     let (library_path, comic_path, page_file_name) = {
         let conn = state.db.get()?;
 
@@ -250,10 +214,10 @@ async fn serve_page_impl(
             .map_err(|e| format!("DB error: {}", e))?
             .unwrap_or_default();
 
-        let scoped = library_cache_dir(&state.cache_root, &library_path);
+        let scoped = crate::commands::library_cache_dir(&state.cache_root, &library_path);
         let pages_dir = scoped.join("pages").join(comic_id.to_string());
 
-        for ext in &["jpg", "jpeg", "png", "webp", "bmp", "gif"] {
+        for ext in crate::thumbnail::IMAGE_EXTENSIONS {
             let cached = pages_dir.join(format!("{}.{}", page_idx, ext));
             if cached.exists() {
                 let content_type = mime_from_ext(ext);
@@ -289,7 +253,7 @@ async fn serve_page_impl(
         (library_path, comic.file_path, page.file_name.clone())
     };
 
-    let scoped = library_cache_dir(&state.cache_root, &library_path);
+    let scoped = crate::commands::library_cache_dir(&state.cache_root, &library_path);
     let pages_dir = scoped.join("pages").join(comic_id.to_string());
 
     let (cached_path, content_type) = tokio::task::spawn_blocking(move || {
@@ -347,7 +311,9 @@ struct LanguageResponse {
     language: String,
 }
 
-async fn get_language_api(state: Arc<ShareState>) -> Result<Response, AppError> {
+async fn get_language(
+    State(state): State<Arc<ShareState>>,
+) -> Result<Response, AppError> {
     let conn = state.db.get()?;
     let lang = db::get_config(&conn, "language")
         .map_err(|e| format!("DB error: {}", e))?
@@ -355,16 +321,10 @@ async fn get_language_api(state: Arc<ShareState>) -> Result<Response, AppError> 
     Ok(Json(LanguageResponse { language: lang }).into_response())
 }
 
-async fn set_language_api(
-    state: Arc<ShareState>,
-    req: Request<Body>,
+async fn set_language(
+    State(state): State<Arc<ShareState>>,
+    Json(body): Json<SetLanguageRequest>,
 ) -> Result<Response, AppError> {
-    let body_bytes = axum::body::to_bytes(req.into_body(), 1024)
-        .await
-        .map_err(|e| format!("Body read error: {}", e))?;
-    let body: SetLanguageRequest = serde_json::from_slice(&body_bytes)
-        .map_err(|e| format!("JSON parse error: {}", e))?;
-
     if body.language != "zh" && body.language != "en" {
         return Err(AppError::Message(format!(
             "Unsupported language: {}. Supported: zh, en",
@@ -381,20 +341,11 @@ async fn set_language_api(
 
 // ── Helpers ──
 
-fn library_cache_dir(cache_root: &std::path::Path, library_path: &str) -> PathBuf {
-    let hash = blake3::hash(library_path.as_bytes()).to_hex();
-    cache_root.join(&hash[..16])
-}
-
-fn mime_from_ext(ext: &str) -> &'static str {
-    match ext {
-        "jpg" | "jpeg" => "image/jpeg",
-        "png" => "image/png",
-        "webp" => "image/webp",
-        "bmp" => "image/bmp",
-        "gif" => "image/gif",
-        _ => "image/jpeg",
-    }
+fn mime_from_ext(ext: &str) -> String {
+    mime_guess::from_ext(ext)
+        .first_or_octet_stream()
+        .essence_str()
+        .to_string()
 }
 
 // ── Error type ──
