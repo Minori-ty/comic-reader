@@ -498,7 +498,7 @@ pub async fn get_page_file_path(
         let pages_cache_dir = scoped.join("pages").join(comic_id.to_string());
 
         // Check if already extracted
-        for ext in &["jpg", "jpeg", "png", "webp", "bmp", "gif"] {
+        for ext in crate::thumbnail::IMAGE_EXTENSIONS {
             let path = pages_cache_dir.join(format!("{}.{}", page_idx, ext));
             if path.exists() {
                 return Ok(path.to_string_lossy().to_string());

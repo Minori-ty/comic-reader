@@ -201,7 +201,7 @@ export function Library() {
                         </div>
                       </div>
                       <div className="card-name" title={comic.fileName}>{comic.fileName}</div>
-                      <div className="card-pages">{comic.pageCount} 页</div>
+                      <div className="card-pages">{t('web.reader.pages', { count: comic.pageCount })}</div>
                     </div>
                   );
                 })}

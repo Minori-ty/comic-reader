@@ -7,7 +7,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import QRCode from 'qrcode'
 import i18n from '../i18n'
-import type { ScanProgress, ScanResult, ServerInfo } from '../types'
+import type { ComicInfo, ScanProgress, ScanResult, ServerInfo } from '../types'
+import { QR_OPTIONS } from '../constants'
 import { useAppStore } from '../store/useAppStore'
 import { SettingsDialog } from './SettingsDialog'
 
@@ -117,11 +118,7 @@ export function Toolbar() {
             setServerInfo(info)
             // 生成QR码（附加语言参数）
             const shareUrl = `${info.url}?lang=${i18n.language}`
-            const dataUrl = await QRCode.toDataURL(shareUrl, {
-                width: 240,
-                margin: 2,
-                color: { dark: '#e0e0e0', light: '#00000000' },
-            })
+            const dataUrl = await QRCode.toDataURL(shareUrl, QR_OPTIONS)
             setQrDataUrl(dataUrl)
         } catch (e) {
             setShareError(String(e))
@@ -154,7 +151,7 @@ export function Toolbar() {
             const result = await invoke<ScanResult>(command, args)
             setScanResult(result)
 
-            const comics = await invoke<any[]>('get_comics')
+            const comics = await invoke<ComicInfo[]>('get_comics')
             setComics(comics)
         } catch (e) {
             console.error('Scan error:', e)

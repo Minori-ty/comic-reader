@@ -10,10 +10,6 @@ interface AppState {
   isScanning: boolean;
   searchQuery: string;
 
-  // Language
-  language: string;
-  setLanguage: (lang: string) => void;
-
   // LAN Share
   serverInfo: ServerInfo | null;
   qrDataUrl: string | null;
@@ -29,8 +25,6 @@ interface AppState {
   // Actions
   setLibraryPath: (path: string | null) => void;
   setComics: (comics: ComicInfo[]) => void;
-  /** Insert or replace a single comic (for real-time scan updates). */
-  upsertComic: (comic: ComicInfo) => void;
   /** Batch insert or replace multiple comics — one array copy, one render. */
   batchUpsertComics: (comics: ComicInfo[]) => void;
   setScanResult: (result: ScanResult | null) => void;
@@ -46,7 +40,6 @@ export const useAppStore = create<AppState>((set) => ({
   scanProgress: null,
   isScanning: false,
   searchQuery: "",
-  language: "zh",
 
   // LAN Share
   serverInfo: null,
@@ -60,31 +53,8 @@ export const useAppStore = create<AppState>((set) => ({
   setShareLoading: (loading) => set({ shareLoading: loading }),
   setShareError: (error) => set({ shareError: error }),
 
-  setLanguage: (language) => set({ language }),
-
   setLibraryPath: (path) => set({ libraryPath: path }),
   setComics: (comics) => set({ comics }),
-
-  upsertComic: (comic) =>
-    set((state) => {
-      const idx = state.comics.findIndex((c) => c.id === comic.id);
-      let newComics: ComicInfo[];
-      if (idx >= 0) {
-        // Replace existing
-        newComics = [...state.comics];
-        newComics[idx] = comic;
-      } else {
-        // Insert new, maintaining sort by fileName
-        newComics = [...state.comics, comic];
-        newComics.sort((a, b) =>
-          a.fileName.localeCompare(b.fileName, undefined, {
-            numeric: true,
-            sensitivity: "base",
-          }),
-        );
-      }
-      return { comics: newComics };
-    }),
 
   /** Batch insert/update — one array copy + one sort, then one render. */
   batchUpsertComics: (incoming) =>

@@ -8,6 +8,7 @@ import { LibraryView } from "./components/LibraryView";
 import { ReaderView } from "./components/ReaderView";
 import { useAppStore } from "./store/useAppStore";
 import type { ServerInfo } from "./types";
+import { QR_OPTIONS } from "./constants";
 import "./App.css";
 
 function App() {
@@ -19,11 +20,7 @@ function App() {
     invoke<ServerInfo | null>("get_server_status").then((info) => {
       if (info) {
         setServerInfo(info);
-        QRCode.toDataURL(`${info.url}?lang=${i18n.language}`, {
-          width: 240,
-          margin: 2,
-          color: { dark: "#e0e0e0", light: "#00000000" },
-        }).then(setQrDataUrl);
+        QRCode.toDataURL(`${info.url}?lang=${i18n.language}`, QR_OPTIONS).then(setQrDataUrl);
       }
     }).catch((e) => {
       console.error("get_server_status:", e);

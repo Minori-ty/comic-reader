@@ -30,7 +30,8 @@ webp = "0.3"
 blake3 = "1.5"
 walkdir = "2.5"
 chrono = { version = "0.4", features = ["serde"] }
-thiserror = "1"
+
+mime_guess = "2"
 axum = "0.7"
 tokio = { version = "1", features = ["sync", "net", "rt-multi-thread"] }
 local-ip-address = "0.6"

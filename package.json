@@ -8,7 +8,7 @@
         "build:web": "cd web && pnpm build",
         "build": "pnpm build:web && tsc && vite build",
         "preview": "vite preview",
-        "tauri": "pnpm build:web && tauri"
+        "tauri": "tauri"
     },
     "dependencies": {
         "@tanstack/react-query": "^5.101.0",

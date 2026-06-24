@@ -10,6 +10,9 @@ import { useAppStore } from "../store/useAppStore";
 import { ComicCard } from "./ComicCard";
 import type { HighlightRange } from "./ComicCard";
 
+/** 组件卸载后缓存滚动位置 */
+let cachedScrollTop = 0;
+
 const CARD_W = 180;
 const CARD_H = 300;
 const GAP = 16;
@@ -225,6 +228,7 @@ export function LibraryView() {
 
   const handleComicClick = useCallback(
     (comicId: number) => {
+      cachedScrollTop = parentRef.current?.scrollTop ?? 0;
       navigate(`/reader/${comicId}`);
     },
     [navigate],
@@ -287,6 +291,7 @@ export function LibraryView() {
     getScrollElement: () => parentRef.current,
     estimateSize: () => CARD_H + GAP,
     overscan: 3,
+    initialOffset: cachedScrollTop,
   });
 
   return (
