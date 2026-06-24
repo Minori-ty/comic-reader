@@ -116,9 +116,8 @@ export function Toolbar() {
             const port = 9527
             const info = await invoke<ServerInfo>('start_server', { port })
             setServerInfo(info)
-            // 生成QR码（附加语言参数）
-            const shareUrl = `${info.url}?lang=${i18n.language}`
-            const dataUrl = await QRCode.toDataURL(shareUrl, QR_OPTIONS)
+            // 生成QR码
+            const dataUrl = await QRCode.toDataURL(info.url, QR_OPTIONS)
             setQrDataUrl(dataUrl)
         } catch (e) {
             setShareError(String(e))
@@ -299,15 +298,14 @@ export function Toolbar() {
                                 <code
                                     className="share-url"
                                     onClick={() => {
-                                        const shareUrl = `${serverInfo.url}?lang=${i18n.language}`;
-                                        navigator.clipboard.writeText(shareUrl).then(() => {
+                                        navigator.clipboard.writeText(serverInfo.url).then(() => {
                                             setUrlCopied(true);
                                             setTimeout(() => setUrlCopied(false), 1500);
                                         });
                                     }}
                                     title={t('share.copyTitle')}
                                 >
-                                    {serverInfo.url}?lang={i18n.language}
+                                    {serverInfo.url}
                                 </code>
                                 <span className={`share-url-copied ${urlCopied ? 'visible' : ''}`}>{t('share.copied')}</span>
                                 <p className="share-hint">

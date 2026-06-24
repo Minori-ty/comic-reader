@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import i18n from "../i18n";
 import { fetchComics, coverUrl, type ComicEntry } from "../api";
 
 const CARD_W = 165;
@@ -17,7 +16,6 @@ let cachedScrollTop = 0;
 export function Library() {
   const { t } = useTranslation()
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const parentRef = useRef<HTMLDivElement>(null);
   const [comics, setComics] = useState<ComicEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,14 +28,6 @@ export function Library() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-
-  // Read language from URL query param (set by desktop share URL)
-  useEffect(() => {
-    const lang = searchParams.get("lang");
-    if (lang && (lang === "zh" || lang === "en") && lang !== i18n.language) {
-      i18n.changeLanguage(lang);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     fetchComics()

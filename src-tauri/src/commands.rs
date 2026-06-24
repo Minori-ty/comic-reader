@@ -33,16 +33,26 @@ pub(crate) fn library_cache_dir(cache_root: &Path, library_path: &str) -> PathBu
     cache_root.join(&hash[..16])
 }
 
-/// Get the current UI language from config. Defaults to "zh" if not set.
+/// Get the current UI language from config.
+/// On first launch (no language stored), detects from system locale and persists it.
 #[tauri::command]
 pub async fn get_language(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let conn = state.db.get().map_err(|e| format!("Pool error: {}", e))?;
-    let lang = db::get_config(&conn, "language")
+    match db::get_config(&conn, "language")
         .map_err(|e| format!("DB error: {}", e))?
-        .unwrap_or_else(|| "zh".to_string());
-    Ok(lang)
+        .filter(|l| !l.is_empty())
+    {
+        Some(lang) => Ok(lang),
+        None => {
+            let sys = sys_locale::get_locale().unwrap_or_else(|| "zh".to_string());
+            let detected = if sys.starts_with("zh") { "zh" } else { "en" };
+            db::set_config(&conn, "language", detected)
+                .map_err(|e| format!("DB error: {}", e))?;
+            Ok(detected.to_string())
+        }
+    }
 }
 
 /// Set the UI language and emit a `language-changed` event.

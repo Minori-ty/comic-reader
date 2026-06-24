@@ -15,12 +15,23 @@ function App() {
   const setServerInfo = useAppStore((s) => s.setServerInfo);
   const setQrDataUrl = useAppStore((s) => s.setQrDataUrl);
 
+  // 启动时从 Rust 加载当前语言（首次启动自动检测系统语言）
+  useEffect(() => {
+    invoke<string>("get_language").then((lang) => {
+      if (lang !== i18n.language) {
+        i18n.changeLanguage(lang);
+      }
+    }).catch((e) => {
+      console.error("get_language:", e);
+    });
+  }, []);
+
   // 启动时检查局域网共享是否已在运行（前端重启但后端未停的情况）
   useEffect(() => {
     invoke<ServerInfo | null>("get_server_status").then((info) => {
       if (info) {
         setServerInfo(info);
-        QRCode.toDataURL(`${info.url}?lang=${i18n.language}`, QR_OPTIONS).then(setQrDataUrl);
+        QRCode.toDataURL(info.url, QR_OPTIONS).then(setQrDataUrl);
       }
     }).catch((e) => {
       console.error("get_server_status:", e);

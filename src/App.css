@@ -969,30 +969,20 @@ body,
   color: var(--text-primary);
 }
 
-.settings-language-options {
-  display: flex;
-  gap: 8px;
-}
-
-.settings-lang-btn {
-  padding: 8px 20px;
+.settings-lang-select {
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-card);
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s;
+  min-width: 140px;
+  outline: none;
 }
 
-.settings-lang-btn:hover {
-  background: var(--bg-hover);
-}
-
-.settings-lang-btn.active {
+.settings-lang-select:focus {
   border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
 }
 
 .settings-cache-actions {

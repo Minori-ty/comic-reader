@@ -159,20 +159,18 @@ export function SettingsDialog({ onClose }: Props) {
                                 <p className="settings-content-desc">
                                     {t('settings.general.languageDesc')}
                                 </p>
-                                <div className="settings-language-options">
-                                    {(['zh', 'en'] as const).map((lang) => (
-                                        <button
-                                            key={lang}
-                                            className={`settings-lang-btn ${i18n.language === lang ? 'active' : ''}`}
-                                            onClick={async () => {
-                                                await invoke('set_language', { language: lang });
-                                                i18n.changeLanguage(lang);
-                                            }}
-                                        >
-                                            {lang === 'zh' ? '中文' : 'English'}
-                                        </button>
-                                    ))}
-                                </div>
+                                <select
+                                    className="settings-lang-select"
+                                    value={i18n.language}
+                                    onChange={async (e) => {
+                                        const lang = e.target.value;
+                                        await invoke('set_language', { language: lang });
+                                        i18n.changeLanguage(lang);
+                                    }}
+                                >
+                                    <option value="zh">中文</option>
+                                    <option value="en">English</option>
+                                </select>
                             </div>
                         </>
                     )}
