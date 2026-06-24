@@ -103,17 +103,19 @@ body,
     padding: 10px;
 }
 
-.lib-scroll::-webkit-scrollbar {
-    width: 8px;
-}
+@media (pointer: fine) {
+    .lib-scroll::-webkit-scrollbar {
+        width: 8px;
+    }
 
-.lib-scroll::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-}
+    .lib-scroll::-webkit-scrollbar-track {
+        background: var(--bg-primary);
+    }
 
-.lib-scroll::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
+    .lib-scroll::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+    }
 }
 
 /* ── Comic Card ── */
@@ -228,13 +230,15 @@ body,
     -webkit-overflow-scrolling: touch;
 }
 
-.reader-scroll::-webkit-scrollbar {
-    width: 6px;
-}
+@media (pointer: fine) {
+    .reader-scroll::-webkit-scrollbar {
+        width: 8px;
+    }
 
-.reader-scroll::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
+    .reader-scroll::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+    }
 }
 
 .page-num {
