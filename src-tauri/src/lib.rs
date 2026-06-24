@@ -65,8 +65,15 @@ pub fn run() {
                 // so concurrent writers wait instead of failing with SQLITE_BUSY.
                 conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;")
             });
+
+            let num_cpus = std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(4);
+            // Floor at 8 so low-core machines still get decent parallelism;
+            // no upper cap — high-core machines scale naturally.
+            let pool_size = num_cpus.max(8) as u32;
             let pool: DbPool = Pool::builder()
-                .max_size(6)
+                .max_size(pool_size)
                 .build(manager)
                 .expect("Failed to create database pool");
 

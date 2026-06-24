@@ -28,7 +28,7 @@ pub fn generate_thumbnail_from_bytes(
         .decode()
         .map_err(|e| format!("Failed to decode image: {}", e))?;
 
-    let thumb = img.resize(THUMBNAIL_WIDTH, u32::MAX, FilterType::Lanczos3);
+    let thumb = img.resize(THUMBNAIL_WIDTH, u32::MAX, FilterType::Triangle);
 
     fs::create_dir_all(thumbnail_dir)
         .map_err(|e| format!("Failed to create thumbnail dir: {}", e))?;
