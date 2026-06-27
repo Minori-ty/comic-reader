@@ -26,10 +26,10 @@ function estimatedPageHeight() {
  */
 export function ReaderView() {
     const { t } = useTranslation()
-    const { comicId } = useParams<{ comicId: string }>();
-    const navigate = useNavigate();
-    const currentComicId = comicId ? Number(comicId) : null;
-    const comics = useAppStore((s) => s.comics)
+    const { comicId } = useParams<{ comicId: string }>()
+    const navigate = useNavigate()
+    const currentComicId = comicId ? Number(comicId) : null
+    const comics = useAppStore(s => s.comics)
 
     const [pages, setPages] = useState<PageInfo[]>([])
     const [loading, setLoading] = useState(true)
@@ -43,7 +43,7 @@ export function ReaderView() {
 
     const scrollRef = useRef<HTMLDivElement>(null)
 
-    const comic = useMemo(() => comics.find((c) => c.id === currentComicId), [comics, currentComicId])
+    const comic = useMemo(() => comics.find(c => c.id === currentComicId), [comics, currentComicId])
 
     // ── 虚拟滚动 ──
     const virtualizer = useVirtualizer({
@@ -51,7 +51,7 @@ export function ReaderView() {
         getScrollElement: () => scrollRef.current,
         estimateSize: estimatedPageHeight,
         overscan: OVERSCAN,
-        measureElement: (el) => el.getBoundingClientRect().height,
+        measureElement: el => el.getBoundingClientRect().height,
     })
 
     const visibleRange = virtualizer.range
@@ -66,7 +66,7 @@ export function ReaderView() {
 
         invoke<PageInfo[]>('get_comic_pages', { comicId: currentComicId })
             .then(setPages)
-            .catch((e) => {
+            .catch(e => {
                 console.error('Failed to load pages:', e)
                 setError(String(e))
             })
@@ -103,14 +103,14 @@ export function ReaderView() {
                 comicId: currentComicId,
                 pageIdx,
             })
-                .then((filePath) => {
-                    setPageUrls((prev) => {
+                .then(filePath => {
+                    setPageUrls(prev => {
                         const next = new Map(prev)
                         next.set(pageIdx, convertFileSrc(filePath))
                         return next
                     })
                 })
-                .catch((e) => {
+                .catch(e => {
                     console.error(`Failed to get page ${pageIdx}:`, e)
                 })
                 .finally(() => {
@@ -156,7 +156,7 @@ export function ReaderView() {
                     break
             }
         },
-        [navigate],
+        [navigate]
     )
 
     useEffect(() => {
@@ -168,8 +168,8 @@ export function ReaderView() {
 
     if (loading) {
         return (
-            <div className="reader-loading">
-                <div className="reader-loading-spinner" />
+            <div className='reader-loading'>
+                <div className='reader-loading-spinner' />
                 <p>{t('reader.loading')}</p>
             </div>
         )
@@ -177,7 +177,7 @@ export function ReaderView() {
 
     if (error) {
         return (
-            <div className="reader-error">
+            <div className='reader-error'>
                 <h2>{t('reader.loadError')}</h2>
                 <p>{error}</p>
                 <button onClick={() => navigate('/')}>{t('reader.backToLibrary')}</button>
@@ -186,16 +186,16 @@ export function ReaderView() {
     }
 
     return (
-        <div className="reader-view">
-            <div className="reader-header">
-                <button className="reader-back-btn" onClick={() => navigate('/')}>
+        <div className='reader-view'>
+            <div className='reader-header'>
+                <button className='reader-back-btn' onClick={() => navigate('/')}>
                     {t('reader.back')}
                 </button>
-                <span className="reader-title">{comic?.fileName ?? t('reader.reading')}</span>
-                <span className="reader-page-info">{t('reader.pages', { count: pages.length })}</span>
+                <span className='reader-title'>{comic?.fileName ?? t('reader.reading')}</span>
+                <span className='reader-page-info'>{t('reader.pages', { count: pages.length })}</span>
             </div>
 
-            <div ref={scrollRef} className="reader-scroll">
+            <div ref={scrollRef} className='reader-scroll'>
                 <div
                     style={{
                         height: `${virtualizer.getTotalSize()}px`,
@@ -203,7 +203,7 @@ export function ReaderView() {
                         position: 'relative',
                     }}
                 >
-                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                    {virtualizer.getVirtualItems().map(virtualItem => {
                         const page = pages[virtualItem.index]
                         const imgSrc = pageUrls.get(page.pageIdx)
 
@@ -212,7 +212,7 @@ export function ReaderView() {
                                 key={virtualItem.key}
                                 data-index={virtualItem.index}
                                 ref={virtualizer.measureElement}
-                                className="reader-page"
+                                className='reader-page'
                                 style={{
                                     position: 'absolute',
                                     top: 0,
@@ -225,16 +225,16 @@ export function ReaderView() {
                                     <img
                                         src={imgSrc}
                                         alt={t('reader.pageAlt', { n: page.pageIdx + 1 })}
-                                        onError={(e) => {
+                                        onError={e => {
                                             console.error(`Failed to load page ${page.pageIdx}:`, e)
                                         }}
                                     />
                                 ) : (
-                                    <div className="reader-page-placeholder">
-                                        <div className="reader-page-spinner" />
+                                    <div className='reader-page-placeholder'>
+                                        <div className='reader-page-spinner' />
                                     </div>
                                 )}
-                                <div className="reader-page-number">{t('reader.pageNum', { n: page.pageIdx + 1 })}</div>
+                                <div className='reader-page-number'>{t('reader.pageNum', { n: page.pageIdx + 1 })}</div>
                             </div>
                         )
                     })}

@@ -1,100 +1,100 @@
 {
-  "toolbar": {
-    "title": "Comic Reader",
-    "searchPlaceholder": "Search comics…",
-    "clearSearch": "Clear search",
-    "pickDir": "Pick Directory",
-    "changeDir": "Change Directory",
-    "scan": "Scan",
-    "scanning": "Scanning…",
-    "share": "📡 Share",
-    "stopShare": "Stop Sharing",
-    "starting": "Starting…",
-    "settings": "Settings",
-    "pickDirTitle": "Select Comic Library Directory"
-  },
-  "share": {
-    "title": "📡 LAN Sharing",
-    "startingMsg": "Starting server…",
-    "startFailed": "⚠️ Start Failed",
-    "hint": "Connect your phone to the same WiFi, scan the QR code or enter the address.",
-    "close": "Close",
-    "stop": "Stop Sharing",
-    "copied": "Copied",
-    "copyTitle": "Click to copy"
-  },
-  "scan": {
-    "newAdded": "New",
-    "updated": "Updated",
-    "removed": "Removed",
-    "unchanged": "Unchanged",
-    "errors": "Errors"
-  },
-  "library": {
-    "welcome": "Welcome to Comic Reader",
-    "welcomeHint": "Select a directory containing comic ZIP/CBZ files to get started.",
-    "scanning": "Scanning Comics…",
-    "scanningHint": "Finding and indexing comic files from directory",
-    "noResults": "No Results",
-    "noResultsHint": "No comics matching \"{{query}}\". Try different keywords.",
-    "noComics": "No Comics Found",
-    "noComicsHint": "No ZIP/CBZ files found in the selected directory. Click \"Scan\" to search again.",
-    "openFileLocation": "Open File Location",
-    "delete": "Delete",
-    "confirmDelete": "Confirm Delete",
-    "deleteMsg": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
-    "deleteLocal": "Also delete local file",
-    "cancel": "Cancel"
-  },
-  "comicCard": {
-    "noCover": "No Cover",
-    "pages": "{{count}} pages"
-  },
-  "reader": {
-    "loading": "Loading Comic…",
-    "loadError": "Failed to Load Comic",
-    "backToLibrary": "Back to Library",
-    "back": "Back",
-    "reading": "Reading",
-    "pages": "{{count}} pages",
-    "pageAlt": "Page {{n}}",
-    "pageNum": "# {{n}}"
-  },
-  "settings": {
-    "title": "Settings",
-    "tabs": {
-      "general": "General",
-      "storage": "Storage",
-      "about": "About"
+    "toolbar": {
+        "title": "Comic Reader",
+        "searchPlaceholder": "Search comics…",
+        "clearSearch": "Clear search",
+        "pickDir": "Pick Directory",
+        "changeDir": "Change Directory",
+        "scan": "Scan",
+        "scanning": "Scanning…",
+        "share": "📡 Share",
+        "stopShare": "Stop Sharing",
+        "starting": "Starting…",
+        "settings": "Settings",
+        "pickDirTitle": "Select Comic Library Directory"
     },
-    "storage": {
-      "desc": "Cache paths and usage for the current library. Caches are automatically isolated when switching library directories.",
-      "appData": "App Data Directory",
-      "database": "Database",
-      "thumbnails": "Cover Thumbnails",
-      "pageCache": "Page Cache",
-      "total": "Cache Total: {{size}}",
-      "loading": "Loading…",
-      "clearing": "Clearing…",
-      "clearCurrent": "Clear Current Library Cache",
-      "clearAll": "Clear All Cache",
-      "cleared": "Cleared: {{path}}",
-      "confirmAll": "⚠️ This will clear all caches and database records for all libraries. This cannot be undone. Continue?",
-      "confirmBtn": "Confirm Clear All",
-      "clearLabel": "Clear {{label}}"
+    "share": {
+        "title": "📡 LAN Sharing",
+        "startingMsg": "Starting server…",
+        "startFailed": "⚠️ Start Failed",
+        "hint": "Connect your phone to the same WiFi, scan the QR code or enter the address.",
+        "close": "Close",
+        "stop": "Stop Sharing",
+        "copied": "Copied",
+        "copyTitle": "Click to copy"
     },
-    "general": {
-      "language": "Language",
-      "languageDesc": "Choose the interface display language"
+    "scan": {
+        "newAdded": "New",
+        "updated": "Updated",
+        "removed": "Removed",
+        "unchanged": "Unchanged",
+        "errors": "Errors"
     },
-    "about": {
-      "title": "Comic Reader — High-Performance Local Comic Reader",
-      "version": "Version",
-      "techStack": "Tech Stack",
-      "formats": "Supported Formats"
+    "library": {
+        "welcome": "Welcome to Comic Reader",
+        "welcomeHint": "Select a directory containing comic ZIP/CBZ files to get started.",
+        "scanning": "Scanning Comics…",
+        "scanningHint": "Finding and indexing comic files from directory",
+        "noResults": "No Results",
+        "noResultsHint": "No comics matching \"{{query}}\". Try different keywords.",
+        "noComics": "No Comics Found",
+        "noComicsHint": "No ZIP/CBZ files found in the selected directory. Click \"Scan\" to search again.",
+        "openFileLocation": "Open File Location",
+        "delete": "Delete",
+        "confirmDelete": "Confirm Delete",
+        "deleteMsg": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+        "deleteLocal": "Also delete local file",
+        "cancel": "Cancel"
     },
-    "path": {
-      "copied": "Copied"
+    "comicCard": {
+        "noCover": "No Cover",
+        "pages": "{{count}} pages"
+    },
+    "reader": {
+        "loading": "Loading Comic…",
+        "loadError": "Failed to Load Comic",
+        "backToLibrary": "Back to Library",
+        "back": "Back",
+        "reading": "Reading",
+        "pages": "{{count}} pages",
+        "pageAlt": "Page {{n}}",
+        "pageNum": "# {{n}}"
+    },
+    "settings": {
+        "title": "Settings",
+        "tabs": {
+            "general": "General",
+            "storage": "Storage",
+            "about": "About"
+        },
+        "storage": {
+            "desc": "Cache paths and usage for the current library. Caches are automatically isolated when switching library directories.",
+            "appData": "App Data Directory",
+            "database": "Database",
+            "thumbnails": "Cover Thumbnails",
+            "pageCache": "Page Cache",
+            "total": "Cache Total: {{size}}",
+            "loading": "Loading…",
+            "clearing": "Clearing…",
+            "clearCurrent": "Clear Current Library Cache",
+            "clearAll": "Clear All Cache",
+            "cleared": "Cleared: {{path}}",
+            "confirmAll": "⚠️ This will clear all caches and database records for all libraries. This cannot be undone. Continue?",
+            "confirmBtn": "Confirm Clear All",
+            "clearLabel": "Clear {{label}}"
+        },
+        "general": {
+            "language": "Language",
+            "languageDesc": "Choose the interface display language"
+        },
+        "about": {
+            "title": "Comic Reader — High-Performance Local Comic Reader",
+            "version": "Version",
+            "techStack": "Tech Stack",
+            "formats": "Supported Formats"
+        },
+        "path": {
+            "copied": "Copied"
+        }
     }
-  }
 }

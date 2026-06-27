@@ -1,100 +1,100 @@
 {
-  "toolbar": {
-    "title": "Comic Reader",
-    "searchPlaceholder": "搜索漫画…",
-    "clearSearch": "清除搜索",
-    "pickDir": "选择目录",
-    "changeDir": "修改目录",
-    "scan": "扫描",
-    "scanning": "扫描中…",
-    "share": "📡 共享",
-    "stopShare": "停止共享",
-    "starting": "启动中…",
-    "settings": "设置",
-    "pickDirTitle": "选择漫画库目录"
-  },
-  "share": {
-    "title": "📡 局域网共享",
-    "startingMsg": "正在启动服务器…",
-    "startFailed": "⚠️ 启动失败",
-    "hint": "手机连接同一 WiFi，扫描二维码或输入地址即可访问。",
-    "close": "关闭",
-    "stop": "停止共享",
-    "copied": "已复制",
-    "copyTitle": "点击复制"
-  },
-  "scan": {
-    "newAdded": "新增",
-    "updated": "更新",
-    "removed": "移除",
-    "unchanged": "未变",
-    "errors": "错误"
-  },
-  "library": {
-    "welcome": "欢迎使用 Comic Reader",
-    "welcomeHint": "选择一个包含漫画 ZIP/CBZ 文件的目录开始使用。",
-    "scanning": "正在扫描漫画…",
-    "scanningHint": "正在从目录中查找并索引漫画文件",
-    "noResults": "无结果",
-    "noResultsHint": "没有匹配 \"{{query}}\" 的漫画，请尝试其他关键词。",
-    "noComics": "未找到漫画",
-    "noComicsHint": "所选目录中未找到 ZIP/CBZ 文件，点击「扫描」按钮重新搜索。",
-    "openFileLocation": "打开文件位置",
-    "delete": "删除",
-    "confirmDelete": "确认删除",
-    "deleteMsg": "确定要删除「{{name}}」吗？此操作不可撤销。",
-    "deleteLocal": "同时删除本地文件",
-    "cancel": "取消"
-  },
-  "comicCard": {
-    "noCover": "无封面",
-    "pages": "{{count}} 页"
-  },
-  "reader": {
-    "loading": "加载漫画中…",
-    "loadError": "加载漫画失败",
-    "backToLibrary": "返回库",
-    "back": "返回",
-    "reading": "阅读中",
-    "pages": "{{count}} 页",
-    "pageAlt": "第 {{n}} 页",
-    "pageNum": "# {{n}}"
-  },
-  "settings": {
-    "title": "设置",
-    "tabs": {
-      "general": "通用",
-      "storage": "存储管理",
-      "about": "关于"
+    "toolbar": {
+        "title": "Comic Reader",
+        "searchPlaceholder": "搜索漫画…",
+        "clearSearch": "清除搜索",
+        "pickDir": "选择目录",
+        "changeDir": "修改目录",
+        "scan": "扫描",
+        "scanning": "扫描中…",
+        "share": "📡 共享",
+        "stopShare": "停止共享",
+        "starting": "启动中…",
+        "settings": "设置",
+        "pickDirTitle": "选择漫画库目录"
     },
-    "storage": {
-      "desc": "当前漫画库的缓存路径及占用空间。切换不同库目录时，缓存会自动隔离。",
-      "appData": "应用数据目录",
-      "database": "数据库",
-      "thumbnails": "封面缩略图",
-      "pageCache": "页面缓存",
-      "total": "缓存总计：{{size}}",
-      "loading": "加载中…",
-      "clearing": "清除中…",
-      "clearCurrent": "清除当前库缓存",
-      "clearAll": "清除全部缓存",
-      "cleared": "已清除: {{path}}",
-      "confirmAll": "⚠️ 此操作将清除所有库的全部缓存和数据库记录，不可撤销。确定继续？",
-      "confirmBtn": "确定清除全部",
-      "clearLabel": "清除{{label}}"
+    "share": {
+        "title": "📡 局域网共享",
+        "startingMsg": "正在启动服务器…",
+        "startFailed": "⚠️ 启动失败",
+        "hint": "手机连接同一 WiFi，扫描二维码或输入地址即可访问。",
+        "close": "关闭",
+        "stop": "停止共享",
+        "copied": "已复制",
+        "copyTitle": "点击复制"
     },
-    "general": {
-      "language": "语言",
-      "languageDesc": "选择界面显示语言"
+    "scan": {
+        "newAdded": "新增",
+        "updated": "更新",
+        "removed": "移除",
+        "unchanged": "未变",
+        "errors": "错误"
     },
-    "about": {
-      "title": "Comic Reader — 高性能本地漫画阅读器",
-      "version": "版本",
-      "techStack": "技术栈",
-      "formats": "支持格式"
+    "library": {
+        "welcome": "欢迎使用 Comic Reader",
+        "welcomeHint": "选择一个包含漫画 ZIP/CBZ 文件的目录开始使用。",
+        "scanning": "正在扫描漫画…",
+        "scanningHint": "正在从目录中查找并索引漫画文件",
+        "noResults": "无结果",
+        "noResultsHint": "没有匹配 \"{{query}}\" 的漫画，请尝试其他关键词。",
+        "noComics": "未找到漫画",
+        "noComicsHint": "所选目录中未找到 ZIP/CBZ 文件，点击「扫描」按钮重新搜索。",
+        "openFileLocation": "打开文件位置",
+        "delete": "删除",
+        "confirmDelete": "确认删除",
+        "deleteMsg": "确定要删除「{{name}}」吗？此操作不可撤销。",
+        "deleteLocal": "同时删除本地文件",
+        "cancel": "取消"
     },
-    "path": {
-      "copied": "已复制"
+    "comicCard": {
+        "noCover": "无封面",
+        "pages": "{{count}} 页"
+    },
+    "reader": {
+        "loading": "加载漫画中…",
+        "loadError": "加载漫画失败",
+        "backToLibrary": "返回库",
+        "back": "返回",
+        "reading": "阅读中",
+        "pages": "{{count}} 页",
+        "pageAlt": "第 {{n}} 页",
+        "pageNum": "# {{n}}"
+    },
+    "settings": {
+        "title": "设置",
+        "tabs": {
+            "general": "通用",
+            "storage": "存储管理",
+            "about": "关于"
+        },
+        "storage": {
+            "desc": "当前漫画库的缓存路径及占用空间。切换不同库目录时，缓存会自动隔离。",
+            "appData": "应用数据目录",
+            "database": "数据库",
+            "thumbnails": "封面缩略图",
+            "pageCache": "页面缓存",
+            "total": "缓存总计：{{size}}",
+            "loading": "加载中…",
+            "clearing": "清除中…",
+            "clearCurrent": "清除当前库缓存",
+            "clearAll": "清除全部缓存",
+            "cleared": "已清除: {{path}}",
+            "confirmAll": "⚠️ 此操作将清除所有库的全部缓存和数据库记录，不可撤销。确定继续？",
+            "confirmBtn": "确定清除全部",
+            "clearLabel": "清除{{label}}"
+        },
+        "general": {
+            "language": "语言",
+            "languageDesc": "选择界面显示语言"
+        },
+        "about": {
+            "title": "Comic Reader — 高性能本地漫画阅读器",
+            "version": "版本",
+            "techStack": "技术栈",
+            "formats": "支持格式"
+        },
+        "path": {
+            "copied": "已复制"
+        }
     }
-  }
 }

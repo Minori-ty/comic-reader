@@ -32,11 +32,11 @@ export function Reader() {
         if (!comicId) return
         setLoading(true)
         fetchPages(Number(comicId))
-            .then((data) => {
+            .then(data => {
                 setPages(data)
                 setLoading(false)
             })
-            .catch((e) => {
+            .catch(e => {
                 setError(e.message)
                 setLoading(false)
             })
@@ -51,8 +51,8 @@ export function Reader() {
 
     if (loading) {
         return (
-            <div className="loading-view">
-                <div className="spinner" />
+            <div className='loading-view'>
+                <div className='spinner' />
                 <p>{t('web.reader.loading')}</p>
             </div>
         )
@@ -60,14 +60,14 @@ export function Reader() {
 
     if (error) {
         return (
-            <div className="reader-page-wrap">
-                <div className="reader-header">
-                    <button className="reader-back" onClick={() => navigate('/')}>
+            <div className='reader-page-wrap'>
+                <div className='reader-header'>
+                    <button className='reader-back' onClick={() => navigate('/')}>
                         {t('web.reader.back')}
                     </button>
-                    <span className="reader-title">{t('web.reader.error')}</span>
+                    <span className='reader-title'>{t('web.reader.error')}</span>
                 </div>
-                <div className="empty-view">
+                <div className='empty-view'>
                     <h2>{t('web.reader.loadError')}</h2>
                     <p>{error}</p>
                 </div>
@@ -76,15 +76,15 @@ export function Reader() {
     }
 
     return (
-        <div className="reader-page-wrap">
-            <div className="reader-header">
-                <button className="reader-back" onClick={() => navigate('/')}>
+        <div className='reader-page-wrap'>
+            <div className='reader-header'>
+                <button className='reader-back' onClick={() => navigate('/')}>
                     {t('web.reader.back')}
                 </button>
-                <span className="reader-title">{title}</span>
-                <span className="reader-count">{t('web.reader.pages', { count: pages.length })}</span>
+                <span className='reader-title'>{title}</span>
+                <span className='reader-count'>{t('web.reader.pages', { count: pages.length })}</span>
             </div>
-            <div ref={scrollRef} className="reader-scroll">
+            <div ref={scrollRef} className='reader-scroll'>
                 <div
                     style={{
                         height: `${virtualizer.getTotalSize()}px`,
@@ -92,7 +92,7 @@ export function Reader() {
                         position: 'relative',
                     }}
                 >
-                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                    {virtualizer.getVirtualItems().map(virtualItem => {
                         const p = pages[virtualItem.index]
                         if (!p) return null
                         return (
@@ -111,9 +111,9 @@ export function Reader() {
                                 <img
                                     src={pageUrl(Number(comicId), p.pageIdx)}
                                     alt={t('web.reader.pageAlt', { n: p.pageIdx + 1 })}
-                                    loading="lazy"
+                                    loading='lazy'
                                     style={{ width: '100%', display: 'block' }}
-                                    onError={(e) => {
+                                    onError={e => {
                                         const img = e.target as HTMLImageElement
                                         img.style.display = 'none'
                                         const ph = img.parentElement!.querySelector('.page-ph') as HTMLElement
@@ -121,7 +121,7 @@ export function Reader() {
                                     }}
                                 />
                                 <div
-                                    className="page-ph"
+                                    className='page-ph'
                                     style={{
                                         display: 'none',
                                         minHeight: '60vh',
@@ -129,9 +129,9 @@ export function Reader() {
                                         justifyContent: 'center',
                                     }}
                                 >
-                                    <div className="spinner" />
+                                    <div className='spinner' />
                                 </div>
-                                <div className="page-num">
+                                <div className='page-num'>
                                     {t('web.reader.pageNum', { current: p.pageIdx + 1, total: pages.length })}
                                 </div>
                             </div>

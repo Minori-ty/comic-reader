@@ -25,10 +25,10 @@ export function SettingsDialog({ onClose }: Props) {
     const loadData = useCallback(() => {
         invoke<AppPaths>('get_app_paths')
             .then(setPaths)
-            .catch((e) => console.error('get_app_paths:', e))
+            .catch(e => console.error('get_app_paths:', e))
         invoke<CacheSizes>('get_cache_sizes')
             .then(setSizes)
-            .catch((e) => console.error('get_cache_sizes:', e))
+            .catch(e => console.error('get_cache_sizes:', e))
     }, [])
 
     useEffect(() => {
@@ -81,27 +81,27 @@ export function SettingsDialog({ onClose }: Props) {
     }
 
     return createPortal(
-        <div className="dialog-overlay" onClick={onClose}>
-            <div className="settings-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className='dialog-overlay' onClick={onClose}>
+            <div className='settings-dialog' onClick={e => e.stopPropagation()} role='dialog' aria-modal='true'>
                 {/* 侧边栏 */}
-                <nav className="settings-sidebar">
-                    <div className="settings-sidebar-title">{t('settings.title')}</div>
+                <nav className='settings-sidebar'>
+                    <div className='settings-sidebar-title'>{t('settings.title')}</div>
                     <button
                         className={`settings-sidebar-item ${tab === 'general' ? 'active' : ''}`}
                         onClick={() => setTab('general')}
                     >
                         <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            strokeWidth='2'
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
                         >
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                            <circle cx='12' cy='12' r='3' />
+                            <path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z' />
                         </svg>
                         {t('settings.tabs.general')}
                     </button>
@@ -110,18 +110,18 @@ export function SettingsDialog({ onClose }: Props) {
                         onClick={() => setTab('storage')}
                     >
                         <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            strokeWidth='2'
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
                         >
-                            <ellipse cx="12" cy="5" rx="9" ry="3" />
-                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                            <ellipse cx='12' cy='5' rx='9' ry='3' />
+                            <path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3' />
+                            <path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5' />
                         </svg>
                         {t('settings.tabs.storage')}
                     </button>
@@ -130,46 +130,42 @@ export function SettingsDialog({ onClose }: Props) {
                         onClick={() => setTab('about')}
                     >
                         <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            strokeWidth='2'
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
                         >
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="16" x2="12" y2="12" />
-                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                            <circle cx='12' cy='12' r='10' />
+                            <line x1='12' y1='16' x2='12' y2='12' />
+                            <line x1='12' y1='8' x2='12.01' y2='8' />
                         </svg>
                         {t('settings.tabs.about')}
                     </button>
                 </nav>
 
                 {/* 内容区 */}
-                <div className="settings-content">
+                <div className='settings-content'>
                     {tab === 'general' && (
                         <>
-                            <h2 className="settings-content-title">{t('settings.tabs.general')}</h2>
-                            <div className="settings-general-section">
-                                <label className="settings-general-label">
-                                    {t('settings.general.language')}
-                                </label>
-                                <p className="settings-content-desc">
-                                    {t('settings.general.languageDesc')}
-                                </p>
+                            <h2 className='settings-content-title'>{t('settings.tabs.general')}</h2>
+                            <div className='settings-general-section'>
+                                <label className='settings-general-label'>{t('settings.general.language')}</label>
+                                <p className='settings-content-desc'>{t('settings.general.languageDesc')}</p>
                                 <select
-                                    className="settings-lang-select"
+                                    className='settings-lang-select'
                                     value={i18n.language}
-                                    onChange={async (e) => {
-                                        const lang = e.target.value;
-                                        await invoke('set_language', { language: lang });
-                                        i18n.changeLanguage(lang);
+                                    onChange={async e => {
+                                        const lang = e.target.value
+                                        await invoke('set_language', { language: lang })
+                                        i18n.changeLanguage(lang)
                                     }}
                                 >
-                                    <option value="zh">中文</option>
-                                    <option value="en">English</option>
+                                    <option value='zh'>中文</option>
+                                    <option value='en'>English</option>
                                 </select>
                             </div>
                         </>
@@ -177,12 +173,10 @@ export function SettingsDialog({ onClose }: Props) {
 
                     {tab === 'storage' && (
                         <>
-                            <h2 className="settings-content-title">{t('settings.tabs.storage')}</h2>
-                            <p className="settings-content-desc">
-                                {t('settings.storage.desc')}
-                            </p>
+                            <h2 className='settings-content-title'>{t('settings.tabs.storage')}</h2>
+                            <p className='settings-content-desc'>{t('settings.storage.desc')}</p>
 
-                            <div className="settings-path-list">
+                            <div className='settings-path-list'>
                                 {paths ? (
                                     <>
                                         <PathRow label={t('settings.storage.appData')} path={paths.appDataDir} />
@@ -200,30 +194,36 @@ export function SettingsDialog({ onClose }: Props) {
                                             clearing={clearing === 'pages'}
                                         />
                                         {sizes && (
-                                            <div className="settings-cache-total">{t('settings.storage.total', { size: sizes.totalSize })}</div>
+                                            <div className='settings-cache-total'>
+                                                {t('settings.storage.total', { size: sizes.totalSize })}
+                                            </div>
                                         )}
                                     </>
                                 ) : (
-                                    <p className="settings-loading">{t('settings.storage.loading')}</p>
+                                    <p className='settings-loading'>{t('settings.storage.loading')}</p>
                                 )}
                             </div>
 
                             {/* 清除缓存按钮 */}
-                            <div className="settings-cache-actions">
+                            <div className='settings-cache-actions'>
                                 <button
-                                    className="dialog-btn dialog-btn-cancel"
+                                    className='dialog-btn dialog-btn-cancel'
                                     onClick={handleClearCurrent}
                                     disabled={clearing !== null}
                                 >
-                                    {clearing === 'current' ? t('settings.storage.clearing') : t('settings.storage.clearCurrent')}
+                                    {clearing === 'current'
+                                        ? t('settings.storage.clearing')
+                                        : t('settings.storage.clearCurrent')}
                                 </button>
-                                <span className="settings-popover-anchor">
+                                <span className='settings-popover-anchor'>
                                     <button
-                                        className="dialog-btn dialog-btn-danger"
+                                        className='dialog-btn dialog-btn-danger'
                                         onClick={() => setConfirmPopover(true)}
                                         disabled={clearing !== null}
                                     >
-                                        {clearing === 'all' ? t('settings.storage.clearing') : t('settings.storage.clearAll')}
+                                        {clearing === 'all'
+                                            ? t('settings.storage.clearing')
+                                            : t('settings.storage.clearAll')}
                                     </button>
                                     {confirmPopover && (
                                         <ConfirmPopover
@@ -248,19 +248,19 @@ export function SettingsDialog({ onClose }: Props) {
 
                     {tab === 'about' && (
                         <>
-                            <h2 className="settings-content-title">{t('settings.tabs.about')}</h2>
-                            <p className="settings-content-desc">{t('settings.about.title')}</p>
-                            <div className="settings-about-info">
-                                <div className="settings-about-row">
-                                    <span className="settings-about-label">{t('settings.about.version')}</span>
+                            <h2 className='settings-content-title'>{t('settings.tabs.about')}</h2>
+                            <p className='settings-content-desc'>{t('settings.about.title')}</p>
+                            <div className='settings-about-info'>
+                                <div className='settings-about-row'>
+                                    <span className='settings-about-label'>{t('settings.about.version')}</span>
                                     <span>1.0.0</span>
                                 </div>
-                                <div className="settings-about-row">
-                                    <span className="settings-about-label">{t('settings.about.techStack')}</span>
+                                <div className='settings-about-row'>
+                                    <span className='settings-about-label'>{t('settings.about.techStack')}</span>
                                     <span>Tauri v2 · Rust · React · SQLite</span>
                                 </div>
-                                <div className="settings-about-row">
-                                    <span className="settings-about-label">{t('settings.about.formats')}</span>
+                                <div className='settings-about-row'>
+                                    <span className='settings-about-label'>{t('settings.about.formats')}</span>
                                     <span>ZIP / CBZ</span>
                                 </div>
                             </div>
@@ -269,7 +269,7 @@ export function SettingsDialog({ onClose }: Props) {
                 </div>
             </div>
         </div>,
-        document.body,
+        document.body
     )
 }
 
@@ -298,13 +298,13 @@ function PathRow({
     }
 
     return (
-        <div className="settings-path-row">
-            <div className="settings-path-header">
-                <span className="settings-path-label">{label}</span>
-                {size !== undefined && <span className="settings-path-size">{size}</span>}
+        <div className='settings-path-row'>
+            <div className='settings-path-header'>
+                <span className='settings-path-label'>{label}</span>
+                {size !== undefined && <span className='settings-path-size'>{size}</span>}
                 {onClear && (
                     <button
-                        className="settings-path-clear-btn"
+                        className='settings-path-clear-btn'
                         onClick={onClear}
                         disabled={clearing}
                         title={t('settings.storage.clearLabel', { label })}
@@ -313,7 +313,7 @@ function PathRow({
                     </button>
                 )}
             </div>
-            <code className="settings-path-value" onClick={handleCopy} title="点击复制">
+            <code className='settings-path-value' onClick={handleCopy} title='点击复制'>
                 {path}
             </code>
             <span className={`settings-path-copied ${copied ? 'visible' : ''}`}>{t('settings.path.copied')}</span>
@@ -345,15 +345,13 @@ function ConfirmPopover({ onCancel, onConfirm }: { onCancel: () => void; onConfi
     }, [onCancel])
 
     return (
-        <div ref={popoverRef} className="confirm-popover">
-            <p className="confirm-popover-text">
-                {t('settings.storage.confirmAll')}
-            </p>
-            <div className="confirm-popover-actions">
-                <button className="dialog-btn dialog-btn-cancel" onClick={onCancel}>
+        <div ref={popoverRef} className='confirm-popover'>
+            <p className='confirm-popover-text'>{t('settings.storage.confirmAll')}</p>
+            <div className='confirm-popover-actions'>
+                <button className='dialog-btn dialog-btn-cancel' onClick={onCancel}>
                     {t('library.cancel')}
                 </button>
-                <button className="dialog-btn dialog-btn-danger" onClick={onConfirm}>
+                <button className='dialog-btn dialog-btn-danger' onClick={onConfirm}>
                     {t('settings.storage.confirmBtn')}
                 </button>
             </div>
@@ -364,12 +362,9 @@ function ConfirmPopover({ onCancel, onConfirm }: { onCancel: () => void; onConfi
 /** Toast 通知 — 3 秒后自动消失。 */
 function ClearToast({ message, onDone }: { message: string; onDone: () => void }) {
     useEffect(() => {
-        const timer = setTimeout(onDone, 3000);
-        return () => clearTimeout(timer);
-    }, [onDone]);
+        const timer = setTimeout(onDone, 3000)
+        return () => clearTimeout(timer)
+    }, [onDone])
 
-    return createPortal(
-        <div className="clear-toast">{message}</div>,
-        document.body,
-    );
+    return createPortal(<div className='clear-toast'>{message}</div>, document.body)
 }

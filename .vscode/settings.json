@@ -1,8 +1,29 @@
 {
-    "i18n-ally.localesPaths": [
-        "src/locales",
-        "web/src/locales"
-    ],
+    "i18n-ally.localesPaths": ["src/locales", "web/src/locales"],
     "i18n-ally.keystyle": "nested",
     "i18n-ally.displayLanguage": "zh",
+
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.format.oxc": "always",
+        "source.fixAll.oxc": "always"
+    },
+    "[vue]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    },
+    "[scss]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode"
+    }
 }

@@ -1,0 +1,40 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "env": {
+        "browser": true,
+        "es2020": true
+    },
+    "globals": {
+        "document": "readonly",
+        "window": "readonly",
+        "console": "readonly",
+        "fetch": "readonly",
+        "navigator": "readonly",
+        "requestAnimationFrame": "readonly",
+        "cancelAnimationFrame": "readonly",
+        "setTimeout": "readonly",
+        "clearTimeout": "readonly"
+    },
+    "rules": {
+        "no-unused-vars": "error",
+        "no-undef": "error",
+        "no-debugger": "error",
+        "no-console": "warn",
+        "no-constant-condition": "warn",
+        "no-self-assign": "error",
+        "no-var": "error",
+        "prefer-const": "warn",
+        "prefer-template": "warn",
+        "object-shorthand": "warn",
+        "no-unnecessary-type-assertion": "warn",
+        "prefer-as-const": "warn",
+        "react-hooks/exhaustive-deps": "warn",
+        "react/jsx-key": "error",
+        "react/no-unescaped-entities": "warn",
+        "react/jsx-no-duplicate-props": "error",
+        "react/jsx-no-undef": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-unknown-property": "error"
+    },
+    "ignorePatterns": ["node_modules/**", "dist/**", "src-tauri/target/**", "*.config.*"]
+}

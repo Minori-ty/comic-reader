@@ -46,15 +46,16 @@ package.json                    Root scripts: build:web, build, tauri
 
 ## Three Build Targets
 
-| Target | Technology | Entry | Output |
-|--------|-----------|-------|--------|
-| Desktop UI | React + Tauri IPC (`invoke`) | `src/main.tsx` | `dist/` (Vite) |
-| Web SPA (mobile) | React + HTTP fetch | `web/src/main.tsx` | `src-tauri/web-dist/` |
-| Rust backend | Tauri v2 + Axum | `src-tauri/src/lib.rs` | Cargo target |
+| Target           | Technology                   | Entry                  | Output                |
+| ---------------- | ---------------------------- | ---------------------- | --------------------- |
+| Desktop UI       | React + Tauri IPC (`invoke`) | `src/main.tsx`         | `dist/` (Vite)        |
+| Web SPA (mobile) | React + HTTP fetch           | `web/src/main.tsx`     | `src-tauri/web-dist/` |
+| Rust backend     | Tauri v2 + Axum              | `src-tauri/src/lib.rs` | Cargo target          |
 
 ## Key Data Flow
 
 ### Startup (Desktop)
+
 ```
 lib.rs::run() → init_db() → create r2d2 pool (dynamic: available_parallelism().max(8))
   → App.tsx mounts → invoke("get_language") → i18n.changeLanguage()
@@ -63,6 +64,7 @@ lib.rs::run() → init_db() → create r2d2 pool (dynamic: available_parallelism
 ```
 
 ### Scanning
+
 ```
 Toolbar → invoke("set_library_path"/"scan_library")
   → scanner.rs::scan_library() ── 4-phase parallel pipeline:
@@ -80,6 +82,7 @@ Toolbar → invoke("set_library_path"/"scan_library")
 ```
 
 ### Reading (Desktop)
+
 ```
 ReaderView mounts → invoke("get_comic_pages") for metadata (fast, DB only)
   → Virtual scroll renders visible range
@@ -89,6 +92,7 @@ ReaderView mounts → invoke("get_comic_pages") for metadata (fast, DB only)
 ```
 
 ### LAN Sharing
+
 ```
 Toolbar → invoke("start_server", {port: 9527})
   → commands.rs spawns tokio task with server::run()
@@ -103,6 +107,7 @@ Toolbar → invoke("start_server", {port: 9527})
 ```
 
 ### Mobile Web
+
 ```
 Phone browser → http://192.168.1.x:9527
   → Axum serves web-dist/ SPA (BrowserRouter)
@@ -120,6 +125,7 @@ Three tables in `{app_data}/comics.db` with WAL mode:
 - **comic_pages** — per-comic page listing (`id`, `comic_id FK CASCADE`, `page_idx`, `file_name`, `file_size`). Unique on `(comic_id, page_idx)`. Index on `comic_id`
 
 Per-library cache: `{app_data}/cache/{hash_prefix}/`. Hash = `blake3(library_path)[..16]` hex.
+
 - `thumbnails/{comic_id}.webp` — lossy WebP, width 200px, Triangle filter
 - `pages/{comic_id}/{page_idx}.{ext}` — extracted on first access
 
@@ -147,6 +153,7 @@ Per-library cache: `{app_data}/cache/{hash_prefix}/`. Hash = `blake3(library_pat
 ## Web Scrollbar Styles
 
 Both `.lib-scroll` and `.reader-scroll` custom scrollbar styles are wrapped in `@media (pointer: fine)`:
+
 - **Desktop (mouse)**: 8px custom scrollbar with theme colors
 - **Mobile/tablet (touch)**: native scrollbar, no override
 

@@ -1,14 +1,20 @@
 {
     "name": "comic-dev",
-    "private": true,
     "version": "0.1.0",
+    "private": true,
     "type": "module",
     "scripts": {
         "dev": "vite",
         "build:web": "cd web && pnpm build",
         "build": "pnpm build:web && tsc && vite build",
         "preview": "vite preview",
-        "tauri": "tauri"
+        "tauri": "tauri",
+        "lint": "oxlint",
+        "lint:fix": "oxlint --fix",
+        "format": "oxfmt --write src web ./CLAUDE.md ./package.json ./.oxfmtrc.json ./.oxlintrc.json",
+        "format:check": "oxfmt --check",
+        "lint:all": "pnpm lint && cd web && pnpm lint",
+        "format:all": "pnpm format && cd web && pnpm format"
     },
     "dependencies": {
         "@tanstack/react-query": "^5.101.0",
@@ -18,7 +24,6 @@
         "@tauri-apps/plugin-fs": "^2.5.1",
         "@tauri-apps/plugin-opener": "^2",
         "i18next": "^26.3.1",
-        "i18next-browser-languagedetector": "^8.2.1",
         "qrcode": "^1.5",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
@@ -32,6 +37,8 @@
         "@types/react": "^19.1.8",
         "@types/react-dom": "^19.1.6",
         "@vitejs/plugin-react": "^4.6.0",
+        "oxfmt": "^0.56.0",
+        "oxlint": "^1.71.0",
         "typescript": "~5.8.3",
         "vite": "^7.0.4"
     }

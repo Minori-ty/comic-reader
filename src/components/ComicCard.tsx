@@ -34,7 +34,7 @@ export const ComicCard = memo(function ComicCard({ comic, onClick, onContextMenu
             e.preventDefault()
             onContextMenu(e, comic)
         },
-        [comic, onContextMenu],
+        [comic, onContextMenu]
     )
 
     // Render title with highlight spans for matched characters
@@ -44,7 +44,7 @@ export const ComicCard = memo(function ComicCard({ comic, onClick, onContextMenu
             return name
         }
         // Fuse indices are [start, end] inclusive. Merge overlapping ranges.
-        const sorted = highlightRanges.map((r) => [r[0], r[1]] as [number, number]).sort((a, b) => a[0] - b[0])
+        const sorted = highlightRanges.map(r => [r[0], r[1]] as [number, number]).sort((a, b) => a[0] - b[0])
         const merged: [number, number][] = []
         for (const [s, e] of sorted) {
             const prev = merged[merged.length - 1]
@@ -62,9 +62,9 @@ export const ComicCard = memo(function ComicCard({ comic, onClick, onContextMenu
                 segments.push(name.slice(cursor, s))
             }
             segments.push(
-                <mark key={s} className="comic-card-highlight">
+                <mark key={s} className='comic-card-highlight'>
                     {name.slice(s, e + 1)}
-                </mark>,
+                </mark>
             )
             cursor = e + 1
         }
@@ -76,31 +76,31 @@ export const ComicCard = memo(function ComicCard({ comic, onClick, onContextMenu
 
     return (
         <div
-            className="comic-card"
+            className='comic-card'
             onClick={() => onClick(comic.id)}
             onContextMenu={handleContextMenu}
-            role="button"
+            role='button'
             tabIndex={0}
-            onKeyDown={(e) => {
+            onKeyDown={e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     onClick(comic.id)
                 }
             }}
         >
-            <div className="comic-card-cover">
+            <div className='comic-card-cover'>
                 {coverSrc ? (
-                    <img src={coverSrc} alt={comic.fileName} loading="lazy" decoding="async" />
+                    <img src={coverSrc} alt={comic.fileName} loading='lazy' decoding='async' />
                 ) : (
-                    <div className="comic-card-placeholder">
+                    <div className='comic-card-placeholder'>
                         <span>{t('comicCard.noCover')}</span>
                     </div>
                 )}
             </div>
-            <div className="comic-card-title" title={comic.fileName}>
+            <div className='comic-card-title' title={comic.fileName}>
                 {renderedTitle}
             </div>
-            <div className="comic-card-pages">{t('comicCard.pages', { count: comic.pageCount })}</div>
+            <div className='comic-card-pages'>{t('comicCard.pages', { count: comic.pageCount })}</div>
         </div>
     )
 })

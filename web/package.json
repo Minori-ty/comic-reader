@@ -1,27 +1,31 @@
 {
-  "name": "comic-web",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite --port 1421",
-    "build": "tsc && vite build",
-    "preview": "vite preview --port 1421"
-  },
-  "dependencies": {
-    "@tanstack/react-virtual": "^3.14.3",
-    "i18next": "^26.3.1",
-    "i18next-browser-languagedetector": "^8.2.1",
-    "react": "^19.2.7",
-    "react-dom": "^19.1.0",
-    "react-i18next": "^17.0.8",
-    "react-router-dom": "^7.18.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.7.0",
-    "typescript": "~5.8.3",
-    "vite": "^7.3.5"
-  }
+    "name": "comic-web",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite --port 1421",
+        "build": "tsc && vite build",
+        "preview": "vite preview --port 1421",
+        "lint": "oxlint",
+        "lint:fix": "oxlint --fix",
+        "format": "oxfmt",
+        "format:check": "oxfmt --check"
+    },
+    "dependencies": {
+        "@tanstack/react-virtual": "^3.14.3",
+        "i18next": "^26.3.1",
+        "i18next-browser-languagedetector": "^8.2.1",
+        "react": "^19.2.7",
+        "react-dom": "^19.1.0",
+        "react-i18next": "^17.0.8",
+        "react-router-dom": "^7.18.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "@vitejs/plugin-react": "^4.7.0",
+        "typescript": "~5.8.3",
+        "vite": "^7.3.5"
+    }
 }
