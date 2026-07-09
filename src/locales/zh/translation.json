@@ -50,6 +50,12 @@
         "noCover": "无封面",
         "pages": "{{count}} 页"
     },
+    "directoryMissing": {
+        "title": "目录不可用",
+        "message": "之前设置的漫画库目录不存在或已被移除。",
+        "hint": "请选择一个包含漫画文件（ZIP/CBZ）的新目录。",
+        "pickDir": "选择目录"
+    },
     "reader": {
         "loading": "加载漫画中…",
         "loadError": "加载漫画失败",

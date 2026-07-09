@@ -567,6 +567,72 @@ body,
     cursor: pointer;
 }
 
+/* ── Directory Missing Overlay ────────────────────── */
+/* 定位在 app-main 区域内，不覆盖顶部 toolbar */
+.dir-missing-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.75);
+    animation: dialog-overlay-in 0.2s ease-out;
+}
+
+.dir-missing-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 40px 48px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+    max-width: 420px;
+    text-align: center;
+    animation: dialog-in 0.2s ease-out;
+}
+
+.dir-missing-icon {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.dir-missing-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.dir-missing-message {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.dir-missing-hint {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.dir-missing-card .toolbar-btn {
+    margin-top: 8px;
+    padding: 10px 28px;
+    font-size: 14px;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.dir-missing-card .toolbar-btn:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
 /* ── Dialog / Modal ────────────────────────────── */
 .dialog-overlay {
     position: fixed;

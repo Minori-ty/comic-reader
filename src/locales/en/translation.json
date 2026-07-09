@@ -50,6 +50,12 @@
         "noCover": "No Cover",
         "pages": "{{count}} pages"
     },
+    "directoryMissing": {
+        "title": "Directory Unavailable",
+        "message": "The previously configured comic library directory no longer exists or has been removed.",
+        "hint": "Please select a new directory containing comic files (ZIP/CBZ).",
+        "pickDir": "Pick Directory"
+    },
     "reader": {
         "loading": "Loading Comic…",
         "loadError": "Failed to Load Comic",

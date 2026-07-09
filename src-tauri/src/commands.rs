@@ -77,6 +77,13 @@ pub async fn set_language(
     Ok(())
 }
 
+/// Check whether a given directory path exists on disk.
+#[tauri::command]
+pub async fn check_directory_exists(path: String) -> Result<bool, String> {
+    let p = Path::new(&path);
+    Ok(p.exists() && p.is_dir())
+}
+
 /// Get the current library path from config.
 #[tauri::command]
 pub async fn get_library_path(

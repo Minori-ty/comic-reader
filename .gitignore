@@ -22,3 +22,6 @@ dist-ssr
 *.sw?
 
 web-dist
+.workbuddy
+.codebuddy
+.codegraph

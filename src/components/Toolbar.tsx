@@ -33,6 +33,8 @@ export function Toolbar() {
     const searchQuery = useAppStore(s => s.searchQuery)
     const setSearchQuery = useAppStore(s => s.setSearchQuery)
 
+    const setLibraryPathMissing = useAppStore(s => s.setLibraryPathMissing)
+
     const scanInProgress = useRef(false)
     const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -96,6 +98,7 @@ export function Toolbar() {
             if (selected && typeof selected === 'string') {
                 setLibraryPath(selected)
                 await doScan({ isNewPath: true, path: selected })
+                setLibraryPathMissing(false)
             }
         } catch (e) {
             console.error('Directory picker error:', e)

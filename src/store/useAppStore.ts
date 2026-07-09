@@ -4,6 +4,8 @@ import type { ComicInfo, ScanProgress, ScanResult, ServerInfo } from '../types'
 interface AppState {
     // Library
     libraryPath: string | null
+    /** Whether the configured library directory does NOT exist on disk. */
+    libraryPathMissing: boolean
     comics: ComicInfo[]
     scanResult: ScanResult | null
     scanProgress: ScanProgress | null
@@ -24,6 +26,7 @@ interface AppState {
 
     // Actions
     setLibraryPath: (path: string | null) => void
+    setLibraryPathMissing: (missing: boolean) => void
     setComics: (comics: ComicInfo[]) => void
     /** Batch insert or replace multiple comics — one array copy, one render. */
     batchUpsertComics: (comics: ComicInfo[]) => void
@@ -35,6 +38,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>(set => ({
     libraryPath: null,
+    libraryPathMissing: false,
     comics: [],
     scanResult: null,
     scanProgress: null,
@@ -54,6 +58,7 @@ export const useAppStore = create<AppState>(set => ({
     setShareError: error => set({ shareError: error }),
 
     setLibraryPath: path => set({ libraryPath: path }),
+    setLibraryPathMissing: missing => set({ libraryPathMissing: missing }),
     setComics: comics => set({ comics }),
 
     /** Batch insert/update — one array copy + one sort, then one render. */
