@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, startTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -207,7 +207,7 @@ export function Toolbar() {
                         type='text'
                         placeholder={t('toolbar.searchPlaceholder')}
                         value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
+                        onChange={e => startTransition(() => setSearchQuery(e.target.value))}
                     />
                     {searchQuery && (
                         <button

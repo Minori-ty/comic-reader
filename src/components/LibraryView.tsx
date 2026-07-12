@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -255,7 +255,9 @@ export function LibraryView() {
     const handleComicClick = useCallback(
         (comicId: number) => {
             cachedScrollTop = parentRef.current?.scrollTop ?? 0
-            navigate(`/reader/${comicId}`)
+            startTransition(() => {
+                navigate(`/reader/${comicId}`)
+            })
         },
         [navigate]
     )
@@ -316,7 +318,43 @@ export function LibraryView() {
     })
 
     return (
-        <div ref={parentRef} className='library-view'>
+        <div className='library-page'>
+            {/* ── 排序栏（在 library-view 外部，不受 padding 影响）── */}
+            {libraryPath && comics.length > 0 && !(isScanning && comics.length === 0) && (
+                <div className='library-sort-bar'>
+                    <span className='library-sort-label'>{t('library.sort')}</span>
+                    <button
+                        className={`library-sort-btn${sortBy === 'name' ? ' active' : ''}`}
+                        onClick={() => startTransition(() => {
+                            if (sortBy === 'name') {
+                                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                            } else {
+                                setSortBy('name')
+                                setSortOrder('asc')
+                            }
+                        })}
+                    >
+                        {t('library.sortByName')}
+                        <span className='library-sort-arrow'>{sortBy === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+                    </button>
+                    <button
+                        className={`library-sort-btn${sortBy === 'date' ? ' active' : ''}`}
+                        onClick={() => startTransition(() => {
+                            if (sortBy === 'date') {
+                                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                            } else {
+                                setSortBy('date')
+                                setSortOrder('desc')
+                            }
+                        })}
+                    >
+                        {t('library.sortByDate')}
+                        <span className='library-sort-arrow'>{sortBy === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+                    </button>
+                </div>
+            )}
+
+            <div ref={parentRef} className='library-view'>
             {!libraryPath ? (
                 <div className='library-empty'>
                     <div className='library-empty-icon'>📚</div>
@@ -342,41 +380,7 @@ export function LibraryView() {
                     <p>{t('library.noComicsHint')}</p>
                 </div>
             ) : (
-                <>
-                    {/* ── 排序栏 ── */}
-                    <div className='library-sort-bar'>
-                        <span className='library-sort-label'>{t('library.sort')}</span>
-                        <button
-                            className={`library-sort-btn${sortBy === 'name' ? ' active' : ''}`}
-                            onClick={() => {
-                                if (sortBy === 'name') {
-                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                                } else {
-                                    setSortBy('name')
-                                    setSortOrder('asc')
-                                }
-                            }}
-                        >
-                            {t('library.sortByName')}
-                            <span className='library-sort-arrow'>{sortBy === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
-                        </button>
-                        <button
-                            className={`library-sort-btn${sortBy === 'date' ? ' active' : ''}`}
-                            onClick={() => {
-                                if (sortBy === 'date') {
-                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                                } else {
-                                    setSortBy('date')
-                                    setSortOrder('desc')
-                                }
-                            }}
-                        >
-                            {t('library.sortByDate')}
-                            <span className='library-sort-arrow'>{sortBy === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
-                        </button>
-                    </div>
-
-                    <div
+                <div
                     style={{
                         height: `${virtualizer.getTotalSize()}px`,
                         width: '100%',
@@ -419,7 +423,6 @@ export function LibraryView() {
                         </div>
                     ))}
                 </div>
-            </>
             )}
 
             {/* ── 右键菜单（portal → body） ── */}
@@ -472,6 +475,7 @@ export function LibraryView() {
                     </div>,
                     document.body
                 )}
+        </div>
         </div>
     )
 }

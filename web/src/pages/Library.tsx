@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, startTransition } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -87,7 +87,9 @@ export function Library() {
     const openReader = useCallback(
         (comic: ComicEntry) => {
             cachedScrollTop = parentRef.current?.scrollTop ?? 0
-            navigate(`/reader/${comic.id}`, { state: { title: comic.fileName } })
+            startTransition(() => {
+                navigate(`/reader/${comic.id}`, { state: { title: comic.fileName } })
+            })
         },
         [navigate]
     )
@@ -147,7 +149,7 @@ export function Library() {
                     type='text'
                     placeholder={t('web.library.searchPlaceholder')}
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={e => startTransition(() => setSearch(e.target.value))}
                 />
                 {search && (
                     <button className='lib-search-clear' onClick={() => setSearch('')}>
@@ -159,28 +161,28 @@ export function Library() {
                 <span className='lib-sort-label'>{t('web.library.sort')}</span>
                 <button
                     className={`lib-sort-btn${sortBy === 'name' ? ' active' : ''}`}
-                    onClick={() => {
+                    onClick={() => startTransition(() => {
                         if (sortBy === 'name') {
                             setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
                         } else {
                             setSortBy('name')
                             setSortOrder('asc')
                         }
-                    }}
+                    })}
                 >
                     {t('web.library.sortByName')}
                     <span className='lib-sort-arrow'>{sortBy === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
                 </button>
                 <button
                     className={`lib-sort-btn${sortBy === 'date' ? ' active' : ''}`}
-                    onClick={() => {
+                    onClick={() => startTransition(() => {
                         if (sortBy === 'date') {
                             setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
                         } else {
                             setSortBy('date')
                             setSortOrder('desc')
                         }
-                    }}
+                    })}
                 >
                     {t('web.library.sortByDate')}
                     <span className='lib-sort-arrow'>{sortBy === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
