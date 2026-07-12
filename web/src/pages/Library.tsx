@@ -22,6 +22,8 @@ export function Library() {
     const [error, setError] = useState<string | null>(null)
     const [vw, setVw] = useState(window.innerWidth)
     const [search, setSearch] = useState('')
+    const [sortBy, setSortBy] = useState<'name' | 'date'>('name')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
     useEffect(() => {
         const onResize = () => setVw(window.innerWidth)
@@ -48,10 +50,29 @@ export function Library() {
     }, [vw])
 
     const filtered = useMemo(() => {
-        if (!search.trim()) return comics
-        const q = search.toLowerCase()
-        return comics.filter(c => c.fileName.toLowerCase().includes(q))
-    }, [comics, search])
+        // Step 1: filter by search
+        let items: ComicEntry[]
+        if (!search.trim()) {
+            items = [...comics]
+        } else {
+            const q = search.toLowerCase()
+            items = comics.filter(c => c.fileName.toLowerCase().includes(q))
+        }
+        // Step 2: sort
+        items.sort((a, b) => {
+            let cmp: number
+            if (sortBy === 'name') {
+                cmp = a.fileName.localeCompare(b.fileName, undefined, {
+                    numeric: true,
+                    sensitivity: 'base',
+                })
+            } else {
+                cmp = a.fileModifiedAt.localeCompare(b.fileModifiedAt)
+            }
+            return sortOrder === 'asc' ? cmp : -cmp
+        })
+        return items
+    }, [comics, search, sortBy, sortOrder])
 
     const rowCount = Math.ceil(filtered.length / columns)
 
@@ -133,6 +154,37 @@ export function Library() {
                         ×
                     </button>
                 )}
+            </div>
+            <div className='lib-sort-bar'>
+                <span className='lib-sort-label'>{t('web.library.sort')}</span>
+                <button
+                    className={`lib-sort-btn${sortBy === 'name' ? ' active' : ''}`}
+                    onClick={() => {
+                        if (sortBy === 'name') {
+                            setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+                        } else {
+                            setSortBy('name')
+                            setSortOrder('asc')
+                        }
+                    }}
+                >
+                    {t('web.library.sortByName')}
+                    <span className='lib-sort-arrow'>{sortBy === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+                </button>
+                <button
+                    className={`lib-sort-btn${sortBy === 'date' ? ' active' : ''}`}
+                    onClick={() => {
+                        if (sortBy === 'date') {
+                            setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+                        } else {
+                            setSortBy('date')
+                            setSortOrder('desc')
+                        }
+                    }}
+                >
+                    {t('web.library.sortByDate')}
+                    <span className='lib-sort-arrow'>{sortBy === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+                </button>
             </div>
             <div ref={parentRef} className='lib-scroll'>
                 {filtered.length === 0 ? (

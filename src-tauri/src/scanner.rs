@@ -23,6 +23,7 @@ struct FileEntry {
     path: PathBuf,
     file_name: String,
     file_size: i64,
+    modified_at: String,
 }
 
 /// Scan a library directory, index comics into SQLite, and generate thumbnails.
@@ -122,7 +123,7 @@ pub fn scan_library(
                 let eid = db::get_comic_id(&conn, &path_str)
                     .map_err(|e| format!("DB: {}", e))?
                     .ok_or_else(|| format!("Comic vanished: {}", path_str))?;
-                db::update_comic(&conn, eid, &hash, entry.file_size, 0, &now)
+                db::update_comic(&conn, eid, &hash, entry.file_size, 0, &entry.modified_at, &now)
                     .map_err(|e| format!("DB update: {}", e))?;
                 db::delete_pages(&conn, eid)
                     .map_err(|e| format!("DB delete pages: {}", e))?;
@@ -135,6 +136,7 @@ pub fn scan_library(
                     &hash,
                     entry.file_size,
                     0,
+                    &entry.modified_at,
                     &now,
                 )
                 .map_err(|e| format!("DB insert: {}", e))?
@@ -211,6 +213,7 @@ pub fn scan_library(
                             .to_string_lossy()
                             .to_string()
                     }),
+                    file_modified_at: entry.modified_at.clone(),
                     added_at: now.clone(),
                     updated_at: now.clone(),
                 };
@@ -305,11 +308,28 @@ fn discover_files(base_dir: &Path) -> Vec<FileEntry> {
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown")
                 .to_string();
-            let file_size = entry.metadata().ok()?.len() as i64;
+            let metadata = entry.metadata().ok()?;
+            let file_size = metadata.len() as i64;
+            let modified_at = metadata
+                .modified()
+                .ok()
+                .map(|t| {
+                    let dur = t
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default();
+                    // Format as RFC 3339 / ISO 8601
+                    let secs = dur.as_secs();
+                    let nanos = dur.subsec_nanos();
+                    let naive = chrono::DateTime::from_timestamp(secs as i64, nanos)
+                        .unwrap_or_default();
+                    naive.to_rfc3339()
+                })
+                .unwrap_or_default();
             Some(FileEntry {
                 path: path.to_path_buf(),
                 file_name,
                 file_size,
+                modified_at,
             })
         })
         .collect()

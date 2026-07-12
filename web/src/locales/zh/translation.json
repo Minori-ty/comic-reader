@@ -9,7 +9,10 @@
             "empty": "库为空",
             "emptyHint": "请先在电脑端扫描漫画目录",
             "noResults": "无结果",
-            "noResultsHint": "没有匹配 \"{{search}}\" 的漫画"
+            "noResultsHint": "没有匹配 \"{{search}}\" 的漫画",
+            "sort": "排序",
+            "sortByName": "名称",
+            "sortByDate": "日期"
         },
         "language": {
             "toggle": "语言: {{lang}}"

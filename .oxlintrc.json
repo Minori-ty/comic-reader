@@ -19,7 +19,7 @@
         "no-unused-vars": "error",
         "no-undef": "error",
         "no-debugger": "error",
-        "no-console": "warn",
+        "no-console": "allow",
         "no-constant-condition": "warn",
         "no-self-assign": "error",
         "no-var": "error",
@@ -36,5 +36,10 @@
         "react/no-direct-mutation-state": "error",
         "react/no-unknown-property": "error"
     },
-    "ignorePatterns": ["node_modules/**", "dist/**", "src-tauri/target/**", "*.config.*"]
+    "ignorePatterns": [
+        "node_modules/**",
+        "dist/**",
+        "src-tauri/target/**",
+        "*.config.*"
+    ]
 }

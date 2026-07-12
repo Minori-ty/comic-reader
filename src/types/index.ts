@@ -9,6 +9,8 @@ export interface ComicInfo {
     coverPath: string | null
     /** Absolute filesystem path to the cover WebP thumbnail */
     coverFilePath: string | null
+    /** File modification timestamp from the filesystem (RFC 3339) */
+    fileModifiedAt: string
     addedAt: string
     updatedAt: string
 }

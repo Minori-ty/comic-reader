@@ -15,6 +15,7 @@ export interface ComicEntry {
     fileName: string
     pageCount: number
     coverUrl: string
+    fileModifiedAt: string
 }
 
 export interface PageEntry {

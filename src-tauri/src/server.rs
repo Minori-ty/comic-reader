@@ -31,6 +31,8 @@ struct ComicEntry {
     page_count: i64,
     #[serde(rename = "coverUrl")]
     cover_url: String,
+    #[serde(rename = "fileModifiedAt")]
+    file_modified_at: String,
 }
 
 #[derive(Serialize)]
@@ -138,6 +140,7 @@ async fn list_comics(
             } else {
                 String::new()
             },
+            file_modified_at: c.file_modified_at,
         })
         .collect();
 

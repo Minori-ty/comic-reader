@@ -96,6 +96,57 @@ body,
     line-height: 1;
 }
 
+/* ── Sort bar ── */
+.lib-sort-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.lib-sort-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.lib-sort-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.lib-sort-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.lib-sort-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.lib-sort-arrow {
+    font-size: 10px;
+    line-height: 1;
+}
+
 .lib-scroll {
     flex: 1;
     overflow-y: scroll;

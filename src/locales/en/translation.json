@@ -44,7 +44,10 @@
         "confirmDelete": "Confirm Delete",
         "deleteMsg": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
         "deleteLocal": "Also delete local file",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "sort": "Sort",
+        "sortByName": "Name",
+        "sortByDate": "Date"
     },
     "comicCard": {
         "noCover": "No Cover",

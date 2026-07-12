@@ -13,6 +13,8 @@ pub struct ComicInfo {
     pub cover_path: Option<String>,
     /// Absolute filesystem path to the cover thumbnail (for convertFileSrc).
     pub cover_file_path: Option<String>,
+    /// File modification timestamp from the filesystem (ISO 8601 / RFC 3339).
+    pub file_modified_at: String,
     pub added_at: String,
     pub updated_at: String,
 }

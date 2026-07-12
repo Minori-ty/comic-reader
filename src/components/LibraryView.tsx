@@ -52,6 +52,10 @@ export function LibraryView() {
     const libraryPath = useAppStore(s => s.libraryPath)
     const searchQuery = useAppStore(s => s.searchQuery)
     const isScanning = useAppStore(s => s.isScanning)
+    const sortBy = useAppStore(s => s.sortBy)
+    const sortOrder = useAppStore(s => s.sortOrder)
+    const setSortBy = useAppStore(s => s.setSortBy)
+    const setSortOrder = useAppStore(s => s.setSortOrder)
 
     const parentRef = useRef<HTMLDivElement>(null)
 
@@ -63,34 +67,56 @@ export function LibraryView() {
         return () => window.removeEventListener('resize', onResize)
     }, [])
 
-    // ── 子串搜索 ──
+    // ── 搜索过滤 + 排序 ──
     const { filteredComics, matchMap } = useMemo(() => {
+        // Step 1: filter by search query
         const q = searchQuery.trim()
+        let items: ComicInfo[]
+        let matchMap: Map<number, readonly HighlightRange[]> | null = null
+
         if (!q) {
-            return { filteredComics: comics, matchMap: null }
-        }
-        const lowerQ = q.toLowerCase()
-        const map = new Map<number, readonly HighlightRange[]>()
-        const items: ComicInfo[] = []
-        for (const comic of comics) {
-            const lowerName = comic.fileName.toLowerCase()
-            const idx = lowerName.indexOf(lowerQ)
-            if (idx !== -1) {
-                items.push(comic)
-                // 查找 fileName 中所有匹配位置（不区分大小写）
-                const ranges: [number, number][] = []
-                let start = 0
-                while (start < lowerName.length) {
-                    const pos = lowerName.indexOf(lowerQ, start)
-                    if (pos === -1) break
-                    ranges.push([pos, pos + q.length - 1])
-                    start = pos + 1
+            items = [...comics]
+        } else {
+            const lowerQ = q.toLowerCase()
+            const map = new Map<number, readonly HighlightRange[]>()
+            const filtered: ComicInfo[] = []
+            for (const comic of comics) {
+                const lowerName = comic.fileName.toLowerCase()
+                const idx = lowerName.indexOf(lowerQ)
+                if (idx !== -1) {
+                    filtered.push(comic)
+                    const ranges: [number, number][] = []
+                    let start = 0
+                    while (start < lowerName.length) {
+                        const pos = lowerName.indexOf(lowerQ, start)
+                        if (pos === -1) break
+                        ranges.push([pos, pos + q.length - 1])
+                        start = pos + 1
+                    }
+                    map.set(comic.id, ranges)
                 }
-                map.set(comic.id, ranges)
             }
+            items = filtered
+            matchMap = map
         }
-        return { filteredComics: items, matchMap: map }
-    }, [comics, searchQuery])
+
+        // Step 2: sort
+        items.sort((a, b) => {
+            let cmp: number
+            if (sortBy === 'name') {
+                cmp = a.fileName.localeCompare(b.fileName, undefined, {
+                    numeric: true,
+                    sensitivity: 'base',
+                })
+            } else {
+                // sort by file modification date (RFC 3339 string comparison works lexicographically)
+                cmp = a.fileModifiedAt.localeCompare(b.fileModifiedAt)
+            }
+            return sortOrder === 'asc' ? cmp : -cmp
+        })
+
+        return { filteredComics: items, matchMap }
+    }, [comics, searchQuery, sortBy, sortOrder])
 
     // ── 右键菜单单例状态 ──
     const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -316,7 +342,41 @@ export function LibraryView() {
                     <p>{t('library.noComicsHint')}</p>
                 </div>
             ) : (
-                <div
+                <>
+                    {/* ── 排序栏 ── */}
+                    <div className='library-sort-bar'>
+                        <span className='library-sort-label'>{t('library.sort')}</span>
+                        <button
+                            className={`library-sort-btn${sortBy === 'name' ? ' active' : ''}`}
+                            onClick={() => {
+                                if (sortBy === 'name') {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                                } else {
+                                    setSortBy('name')
+                                    setSortOrder('asc')
+                                }
+                            }}
+                        >
+                            {t('library.sortByName')}
+                            <span className='library-sort-arrow'>{sortBy === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+                        </button>
+                        <button
+                            className={`library-sort-btn${sortBy === 'date' ? ' active' : ''}`}
+                            onClick={() => {
+                                if (sortBy === 'date') {
+                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                                } else {
+                                    setSortBy('date')
+                                    setSortOrder('desc')
+                                }
+                            }}
+                        >
+                            {t('library.sortByDate')}
+                            <span className='library-sort-arrow'>{sortBy === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+                        </button>
+                    </div>
+
+                    <div
                     style={{
                         height: `${virtualizer.getTotalSize()}px`,
                         width: '100%',
@@ -359,6 +419,7 @@ export function LibraryView() {
                         </div>
                     ))}
                 </div>
+            </>
             )}
 
             {/* ── 右键菜单（portal → body） ── */}

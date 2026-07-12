@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import type { ComicInfo, ScanProgress, ScanResult, ServerInfo } from '../types'
 
+export type SortBy = 'name' | 'date'
+export type SortOrder = 'asc' | 'desc'
+
 interface AppState {
     // Library
     libraryPath: string | null
@@ -11,6 +14,8 @@ interface AppState {
     scanProgress: ScanProgress | null
     isScanning: boolean
     searchQuery: string
+    sortBy: SortBy
+    sortOrder: SortOrder
 
     // LAN Share
     serverInfo: ServerInfo | null
@@ -34,6 +39,8 @@ interface AppState {
     setScanProgress: (progress: ScanProgress | null) => void
     setIsScanning: (scanning: boolean) => void
     setSearchQuery: (query: string) => void
+    setSortBy: (sortBy: SortBy) => void
+    setSortOrder: (sortOrder: SortOrder) => void
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -44,6 +51,8 @@ export const useAppStore = create<AppState>(set => ({
     scanProgress: null,
     isScanning: false,
     searchQuery: '',
+    sortBy: 'name',
+    sortOrder: 'asc',
 
     // LAN Share
     serverInfo: null,
@@ -83,4 +92,6 @@ export const useAppStore = create<AppState>(set => ({
     setScanProgress: progress => set({ scanProgress: progress }),
     setIsScanning: scanning => set({ isScanning: scanning }),
     setSearchQuery: query => set({ searchQuery: query }),
+    setSortBy: (value: SortBy) => set({ sortBy: value }),
+    setSortOrder: (value: SortOrder) => set({ sortOrder: value }),
 }))

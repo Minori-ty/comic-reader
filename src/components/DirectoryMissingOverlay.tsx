@@ -26,6 +26,8 @@ export function DirectoryMissingOverlay() {
             if (selected && typeof selected === 'string') {
                 setIsScanning(true)
                 setLibraryPath(selected)
+                // 切换目录时先清空旧列表
+                setComics([])
 
                 const result = await invoke<ScanResult>('set_library_path', { path: selected })
                 console.log('Scan result:', result)

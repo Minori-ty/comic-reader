@@ -28,6 +28,7 @@ pub fn init_db(db_path: &Path) -> SqliteResult<()> {
             file_size  INTEGER NOT NULL,
             page_count INTEGER NOT NULL DEFAULT 0,
             cover_path TEXT,
+            file_modified_at TEXT NOT NULL DEFAULT '',
             added_at   TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -46,6 +47,12 @@ pub fn init_db(db_path: &Path) -> SqliteResult<()> {
         CREATE INDEX IF NOT EXISTS idx_pages_comic_id ON comic_pages(comic_id);
         ",
     )?;
+
+    // Migration: add file_modified_at column for DBs created before this field existed.
+    let _ = conn.execute(
+        "ALTER TABLE comics ADD COLUMN file_modified_at TEXT NOT NULL DEFAULT ''",
+        [],
+    );
 
     Ok(())
 }
@@ -72,7 +79,7 @@ pub fn set_config(conn: &Connection, key: &str, value: &str) -> SqliteResult<()>
 /// Get all comics ordered by file_name.
 pub fn get_all_comics(conn: &Connection) -> SqliteResult<Vec<ComicInfo>> {
     let mut stmt = conn.prepare(
-        "SELECT id, file_path, file_name, file_hash, file_size, page_count, cover_path, added_at, updated_at
+        "SELECT id, file_path, file_name, file_hash, file_size, page_count, cover_path, file_modified_at, added_at, updated_at
          FROM comics ORDER BY file_name",
     )?;
     let comics = stmt
@@ -86,8 +93,9 @@ pub fn get_all_comics(conn: &Connection) -> SqliteResult<Vec<ComicInfo>> {
                 page_count: row.get(5)?,
                 cover_path: row.get(6)?,
                 cover_file_path: None, // populated by caller
-                added_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                file_modified_at: row.get(7)?,
+                added_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         })?
         .collect::<SqliteResult<Vec<_>>>()?;
@@ -97,7 +105,7 @@ pub fn get_all_comics(conn: &Connection) -> SqliteResult<Vec<ComicInfo>> {
 /// Get a single comic by id.
 pub fn get_comic_by_id(conn: &Connection, comic_id: i64) -> SqliteResult<Option<ComicInfo>> {
     let mut stmt = conn.prepare(
-        "SELECT id, file_path, file_name, file_hash, file_size, page_count, cover_path, added_at, updated_at
+        "SELECT id, file_path, file_name, file_hash, file_size, page_count, cover_path, file_modified_at, added_at, updated_at
          FROM comics WHERE id = ?1",
     )?;
     stmt.query_row(params![comic_id], |row| {
@@ -110,8 +118,9 @@ pub fn get_comic_by_id(conn: &Connection, comic_id: i64) -> SqliteResult<Option<
             page_count: row.get(5)?,
             cover_path: row.get(6)?,
             cover_file_path: None, // populated by caller
-            added_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            file_modified_at: row.get(7)?,
+            added_at: row.get(8)?,
+            updated_at: row.get(9)?,
         })
     })
     .optional()
@@ -137,12 +146,13 @@ pub fn insert_comic(
     file_hash: &str,
     file_size: i64,
     page_count: i64,
+    file_modified_at: &str,
     added_at: &str,
 ) -> SqliteResult<i64> {
     conn.execute(
-        "INSERT INTO comics (file_path, file_name, file_hash, file_size, page_count, added_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-        params![file_path, file_name, file_hash, file_size, page_count, added_at],
+        "INSERT INTO comics (file_path, file_name, file_hash, file_size, page_count, file_modified_at, added_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+        params![file_path, file_name, file_hash, file_size, page_count, file_modified_at, added_at],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -154,11 +164,12 @@ pub fn update_comic(
     file_hash: &str,
     file_size: i64,
     page_count: i64,
+    file_modified_at: &str,
     updated_at: &str,
 ) -> SqliteResult<()> {
     conn.execute(
-        "UPDATE comics SET file_hash = ?1, file_size = ?2, page_count = ?3, updated_at = ?4 WHERE id = ?5",
-        params![file_hash, file_size, page_count, updated_at, comic_id],
+        "UPDATE comics SET file_hash = ?1, file_size = ?2, page_count = ?3, file_modified_at = ?4, updated_at = ?5 WHERE id = ?6",
+        params![file_hash, file_size, page_count, file_modified_at, updated_at, comic_id],
     )?;
     Ok(())
 }

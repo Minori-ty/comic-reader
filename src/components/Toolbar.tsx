@@ -148,6 +148,8 @@ export function Toolbar() {
         setIsScanning(true)
         setScanResult(null)
         setScanProgress(null)
+        // 切换新目录时立即清空旧列表，防止旧漫画残留
+        if (isNewPath) setComics([])
 
         try {
             const command = isNewPath ? 'set_library_path' : 'scan_library'

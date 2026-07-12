@@ -9,7 +9,10 @@
             "empty": "Library Empty",
             "emptyHint": "Please scan the comic directory on desktop first",
             "noResults": "No Results",
-            "noResultsHint": "No comics matching \"{{search}}\""
+            "noResultsHint": "No comics matching \"{{search}}\"",
+            "sort": "Sort",
+            "sortByName": "Name",
+            "sortByDate": "Date"
         },
         "language": {
             "toggle": "Language: {{lang}}"
