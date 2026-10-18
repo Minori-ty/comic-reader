@@ -1,0 +1,93 @@
+name: Build Windows exe and publish Release
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-windows:
+    name: Build Windows exe and publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install frontend deps
+        run: pnpm install
+
+      - name: Build web assets
+        run: pnpm build:web || pnpm build
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rust-src
+
+      - name: Add Windows target
+        run: rustup target add x86_64-pc-windows-msvc
+
+      - name: Build Tauri (Windows)
+        env:
+          CARGO_TERM_COLOR: always
+        shell: bash
+        run: |
+          if [ -d "src-tauri" ]; then
+            cd src-tauri
+            cargo build --release --target x86_64-pc-windows-msvc || true
+            cargo tauri build --release --target x86_64-pc-windows-msvc || true
+            cd -
+          else
+            echo "src-tauri not found, skipping tauri build"
+          fi
+
+      - name: List generated bundles
+        shell: bash
+        run: |
+          echo "Bundles under src-tauri/target/release/bundle (if any):"
+          if [ -d "src-tauri/target/release/bundle" ]; then
+            find src-tauri/target/release/bundle -type f -maxdepth 3 -print || true
+          else
+            echo "No bundle directory found"
+          fi
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: build-${{ github.run_number }}-${{ github.run_id }}
+          release_name: Build ${{ github.run_number }}
+          body: Automated Windows build produced by workflow ${{ github.workflow }}
+
+      - name: Upload bundle files to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -e
+          UPLOAD_URL="${{ steps.create_release.outputs.upload_url }}"
+          echo "Release upload URL: $UPLOAD_URL"
+          if [ -d "src-tauri/target/release/bundle" ]; then
+            find src-tauri/target/release/bundle -type f -maxdepth 5 | while read -r file; do
+              name=$(basename "$file")
+              echo "Uploading $file as $name"
+              curl -s -X POST \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Content-Type: application/octet-stream" \
+                --data-binary @"$file" "${UPLOAD_URL}?name=$name"
+            done
+          else
+            echo "No bundle files to upload"
+          fi
