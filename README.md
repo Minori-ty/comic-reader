@@ -1,8 +1,8 @@
 # Comic Reader
 
-[中文简介（点此查看）](#中文翻译)
+[English](./README.md) · [中文](./README.zh-CN.md)
 
-A high-performance local comic reader built with Tauri v2 (Rust backend) and React 19 (TypeScript frontend). It supports ZIP/CBZ comics with cover thumbnails, virtual-scrolled reading, and LAN sharing (with QR codes). The project provides both a desktop app (Tauri) and a mobile-friendly web SPA.
+A high-performance local comic reader built with Tauri v2 (Rust backend) and React 19 (TypeScript frontend). It supports ZIP/CBZ comics with cover thumbnails, virtual-scrolled reading, and LAN sharing.
 
 ## Highlights
 - Desktop app: Tauri (Rust) + React 19 + TypeScript
@@ -40,7 +40,7 @@ A high-performance local comic reader built with Tauri v2 (Rust backend) and Rea
     - db.rs and models.rs — SQLite schema and data access
 
 ## How it fits together (short)
-On startup, the Rust side initializes the database and a connection pool, while the React frontend invokes commands to request configuration and trigger scans. Scanning is pipelined and parallelized: file hashing, metadata extraction, and thumbnail generation happen in a coordinated workflow, and the UI updates incrementally as items are indexed. ReaderView requests pages on demand so memory usage stays low and large libraries remain responsive.
+On startup, the Rust side initializes the database and a connection pool, while the React frontend invokes commands to request configuration and trigger scans. Scanning is pipelined and parallelized, and the web layer consumes the same backend APIs for mobile browsing.
 
 ## Build and run
 Prerequisites:
@@ -103,33 +103,3 @@ Common scripts (see package.json):
 
 ## License
 MIT
-
----
-
-## 中文翻译
-
-本项目为本地漫画阅读器，采用 Tauri v2（Rust 后端）和 React + TypeScript 前端，支持 ZIP/CBZ 漫画、封面缩略图、虚拟滚动阅读器与局域网分享（含二维码）。项目同时包含桌面应用和移动友好的 Web SPA。
-
-- 前端（桌面）位于 src/，入口 src/main.tsx；主要组件见 src/components/*（Toolbar、LibraryView、ReaderView 等）。
-- 移动 Web SPA 位于 web/，入口 web/src/main.tsx，使用 HTTP API 来获取漫画列表和图片。
-- 后端位于 src-tauri/src/，包含命令处理、扫描器、内置 HTTP 服务器、缩略图生成、SQLite 数据层等模块。
-
-开发快速上手（简要）
-1. 安装依赖：pnpm install（并在 web/ 中执行 pnpm install）
-2. 本地开发（先构建 web，再运行 Tauri 开发模式）：
-   ```bash
-   pnpm build:web
-   pnpm tauri dev
-   ```
-3. 单独运行 web（开发）：
-   ```bash
-   cd web
-   pnpm dev
-   ```
-4. 打包发布：
-   ```bash
-   pnpm build:web
-   pnpm tauri build
-   ```
-
-如果你想继续，我也可以进一步为这个 README 增加截图、功能列表或更多详细的安装说明。
