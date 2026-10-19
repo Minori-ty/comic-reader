@@ -21,21 +21,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'pnpm'
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Enable pnpm
+        run: corepack enable
 
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
       - name: Build web assets
-        run: pnpm build:web || pnpm build
+        run: pnpm build:web
 
       - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          components: rust-src
 
       - name: Add Windows target
         run: rustup target add x86_64-pc-windows-msvc
@@ -45,46 +45,36 @@ jobs:
           CARGO_TERM_COLOR: always
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           pnpm tauri build --target x86_64-pc-windows-msvc
 
-      - name: List generated bundles
+      - name: Discover bundle files
+        id: bundle
         shell: bash
         run: |
-          echo "Bundles under src-tauri/target/release/bundle (if any):"
-          if [ -d "src-tauri/target/release/bundle" ]; then
-            find src-tauri/target/release/bundle -type f -maxdepth 3 -print || true
-          else
-            echo "No bundle directory found"
-          fi
+          set -euo pipefail
+          mkdir -p release-artifacts
+          find src-tauri/target -type f \( -iname '*.exe' -o -iname '*.msi' -o -iname '*.zip' -o -iname '*.nsis.zip' -o -iname '*.tar.gz' \) -print | while IFS= read -r file; do
+            cp "$file" release-artifacts/
+          done
 
-      - name: Create GitHub release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "files_found=$(find release-artifacts -type f | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          find release-artifacts -maxdepth 1 -type f -print
+
+      - name: Publish release
+        if: steps.bundle.outputs.files_found != '0'
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: build-${{ github.run_number }}-${{ github.run_id }}
-          release_name: Build ${{ github.run_number }}
+          tag: build-${{ github.run_number }}-${{ github.run_id }}
+          name: Build ${{ github.run_number }}
           body: Automated Windows build produced by workflow ${{ github.workflow }}
+          artifacts: release-artifacts/*
+          allowUpdates: true
+          removeArtifacts: false
 
-      - name: Upload bundle files to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
+      - name: No bundle warning
+        if: steps.bundle.outputs.files_found == '0'
         run: |
-          set -e
-          UPLOAD_URL="${{ steps.create_release.outputs.upload_url }}"
-          echo "Release upload URL: $UPLOAD_URL"
-          if [ -d "src-tauri/target/release/bundle" ]; then
-            find src-tauri/target/release/bundle -type f -maxdepth 5 | while read -r file; do
-              name=$(basename "$file")
-              echo "Uploading $file as $name"
-              curl -s -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Content-Type: application/octet-stream" \
-                --data-binary @"$file" "${UPLOAD_URL}?name=$name"
-            done
-          else
-            echo "No bundle files to upload"
-          fi
+          echo "No bundle files were generated under src-tauri/target."
+          echo "Check the Tauri build logs above for packaging errors."
+          exit 1
