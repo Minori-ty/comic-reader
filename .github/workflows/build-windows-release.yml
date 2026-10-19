@@ -26,7 +26,7 @@ jobs:
         run: npm install -g pnpm
 
       - name: Install frontend deps
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build web assets
         run: pnpm build:web || pnpm build
@@ -45,14 +45,8 @@ jobs:
           CARGO_TERM_COLOR: always
         shell: bash
         run: |
-          if [ -d "src-tauri" ]; then
-            cd src-tauri
-            cargo build --release --target x86_64-pc-windows-msvc || true
-            cargo tauri build --release --target x86_64-pc-windows-msvc || true
-            cd -
-          else
-            echo "src-tauri not found, skipping tauri build"
-          fi
+          set -e
+          pnpm tauri build --target x86_64-pc-windows-msvc
 
       - name: List generated bundles
         shell: bash
