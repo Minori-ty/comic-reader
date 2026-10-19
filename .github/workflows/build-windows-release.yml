@@ -23,7 +23,15 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Enable pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 'latest'
+
+      - name: Verify pnpm
+        run: pnpm --version
+
+      - name: Enable pnpm (corepack)
         run: corepack enable
 
       - name: Install frontend deps
