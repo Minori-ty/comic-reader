@@ -17,14 +17,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          node-version: '20'
 
       - name: Verify pnpm
         run: pnpm --version
@@ -60,11 +61,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-artifacts
-          find src-tauri/target -type f \( -iname '*.exe' -o -iname '*.msi' -o -iname '*.zip' -o -iname '*.nsis.zip' -o -iname '*.tar.gz' \) -print | while IFS= read -r file; do
+          find src-tauri/target -type f \( -iname '*.exe' -o -iname '*.msi' -o -iname '*.zip' -o -iname '*.tar.gz' -o -iname '*.nsis.zip' \) -print | while IFS= read -r file; do
             cp "$file" release-artifacts/
           done
 
-          echo "files_found=$(find release-artifacts -type f | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          echo "files_found=$(find release-artifacts -maxdepth 1 -type f | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
           find release-artifacts -maxdepth 1 -type f -print
 
       - name: Publish release
