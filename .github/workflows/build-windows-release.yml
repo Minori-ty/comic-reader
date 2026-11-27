@@ -36,6 +36,15 @@ jobs:
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
+      - name: Read app version
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using app version: v$VERSION"
+
       - name: Build web assets
         run: pnpm build:web
 
@@ -72,8 +81,8 @@ jobs:
         if: steps.bundle.outputs.files_found != '0'
         uses: ncipollo/release-action@v1
         with:
-          tag: build-${{ github.run_number }}-${{ github.run_id }}
-          name: Build ${{ github.run_number }}
+          tag: v${{ steps.package.outputs.version }}
+          name: v${{ steps.package.outputs.version }}
           body: Automated Windows build produced by workflow ${{ github.workflow }}
           artifacts: release-artifacts/*
           allowUpdates: true
